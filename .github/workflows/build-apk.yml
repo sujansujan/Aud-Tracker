@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Android APK
@@ -17,11 +20,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: npm install || npm install --legacy-peer-deps
 
       - name: Build Web App
         run: npm run build
@@ -32,6 +34,9 @@ jobs:
           distribution: 'zulu'
           java-version: 17
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Add Android Platform with Capacitor
         run: |
           npx cap add android || true
@@ -39,7 +44,9 @@ jobs:
 
       - name: Build Android APK via Gradle
         working-directory: ./android
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
