@@ -41,6 +41,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Accept Licenses & Install Android SDK 36
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+
       - name: Prepare and Sync Capacitor Android
         run: |
           if [ ! -f "android/gradlew" ]; then
@@ -48,11 +53,7 @@ jobs:
             rm -rf android
             npx cap add android
           fi
-          # Ensure stable Android SDK 34 is targeted
-          sed -i 's/compileSdkVersion = 36/compileSdkVersion = 34/g' android/variables.gradle 2>/dev/null || true
-          sed -i 's/targetSdkVersion = 36/targetSdkVersion = 34/g' android/variables.gradle 2>/dev/null || true
           npx cap sync android
-          # Ensure wrapper exists
           if [ ! -f "android/gradlew" ]; then
             echo "Generating wrapper using Gradle action..."
             (cd android && gradle wrapper) || true
