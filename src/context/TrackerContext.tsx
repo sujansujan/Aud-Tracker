@@ -3,7 +3,7 @@ import { Audiobook, WatchlistItem, MuteItem, NotificationLogItem, PushNotificati
 import { INITIAL_AUDIOBOOKS, DEFAULT_PUSH_SETTINGS } from '../data/initialCatalog';
 import { audioPlayer } from '../utils/audioPreview';
 import { playNotificationSound, sendNativePushNotification, requestPushPermission, CURRENT_DATE_STR, evaluateTriggeredReminders } from '../utils/notifications';
-import { fetchAudibleApiMetadata, scanWatchlistTarget, isMuted, isEnglishAudiobook, getASIN } from '../services/audibleApiService';
+import { fetchAudibleApiMetadata, scanWatchlistTargetLive, isMuted, isEnglishAudiobook, getASIN } from '../services/audibleApiService';
 
 const DEFAULT_WATCHLIST: WatchlistItem[] = [
   { id: 'w-1', type: 'Author', name: 'Brandon Sanderson', url: 'https://www.audible.com/author/Brandon-Sanderson/B001IGFHW6' },
@@ -363,7 +363,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       for (let i = 0; i < seriesList.length; i++) {
         const item = seriesList[i];
         setScanStatusText(`Scanning series (${i + 1}/${seriesList.length}): ${item.name}...`);
-        const found = scanWatchlistTarget(item, books, muteList);
+        const found = await scanWatchlistTargetLive(item, books, muteList);
         if (found.length > 0) {
           found.forEach((nb) => addBook(nb));
           totalNew += found.length;
@@ -375,7 +375,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       for (let i = 0; i < authorList.length; i++) {
         const item = authorList[i];
         setScanStatusText(`Scanning author (${i + 1}/${authorList.length}): ${item.name}...`);
-        const found = scanWatchlistTarget(item, books, muteList);
+        const found = await scanWatchlistTargetLive(item, books, muteList);
         if (found.length > 0) {
           found.forEach((nb) => addBook(nb));
           totalNew += found.length;
@@ -387,7 +387,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       for (let i = 0; i < narratorList.length; i++) {
         const item = narratorList[i];
         setScanStatusText(`Scanning narrator (${i + 1}/${narratorList.length}): ${item.name}...`);
-        const found = scanWatchlistTarget(item, books, muteList);
+        const found = await scanWatchlistTargetLive(item, books, muteList);
         if (found.length > 0) {
           found.forEach((nb) => addBook(nb));
           totalNew += found.length;
@@ -417,7 +417,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsScanning(true);
     let count = 0;
     try {
-      const found = scanWatchlistTarget(target, books, muteList);
+      const found = await scanWatchlistTargetLive(target, books, muteList);
       found.forEach((b) => addBook(b));
       count = found.length;
       setScanStatusText(`Scan complete for ${target.name}. Found ${count} new release(s).`);
