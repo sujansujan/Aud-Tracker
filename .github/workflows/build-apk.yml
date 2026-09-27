@@ -43,20 +43,31 @@ jobs:
 
       - name: Prepare and Sync Capacitor Android
         run: |
-          if [ ! -d "android" ]; then
-            echo "Android platform not found in repository. Initializing Capacitor Android..."
+          if [ ! -f "android/gradlew" ]; then
+            echo "gradlew not found. Initializing complete Capacitor Android platform..."
+            rm -rf android
             npx cap add android
           fi
           # Ensure stable Android SDK 34 is targeted
           sed -i 's/compileSdkVersion = 36/compileSdkVersion = 34/g' android/variables.gradle 2>/dev/null || true
           sed -i 's/targetSdkVersion = 36/targetSdkVersion = 34/g' android/variables.gradle 2>/dev/null || true
           npx cap sync android
+          # Ensure wrapper exists
+          if [ ! -f "android/gradlew" ]; then
+            echo "Generating wrapper using Gradle action..."
+            (cd android && gradle wrapper) || true
+          fi
 
       - name: Build Android APK via Gradle
         working-directory: ./android
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          if [ -f "./gradlew" ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          else
+            echo "Falling back to system gradle..."
+            gradle assembleDebug --no-daemon --stacktrace
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
