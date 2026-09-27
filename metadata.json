@@ -1,0 +1,6 @@
+{
+  "name": "Audible Release Tracker",
+  "description": "Track upcoming audiobook releases from Audible, follow authors, narrators, and series, get 1-week, 1-day, and release-day reminders, and log your reading history.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
