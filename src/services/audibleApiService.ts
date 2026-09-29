@@ -129,11 +129,59 @@ export function isMatchingNarrator(narrators: Array<{ name: string }>, narratorN
 }
 
 /**
- * Strict Role Guard for Series
+ * Strict Role Guard for Series:
+ * Checks series array, publication_name (Audible's series field), subtitle, and title
  */
-export function isMatchingSeries(seriesList: Array<{ title: string }>, seriesName: string): boolean {
-  const cleanTarget = seriesName.toLowerCase().trim();
-  return seriesList.some((s) => (s.title || '').toLowerCase().includes(cleanTarget));
+export function isMatchingSeries(rawProductOrSeries: any, seriesName: string): boolean {
+  const normalize = (s: string) =>
+    (s || '')
+      .toLowerCase()
+      .replace(/audiobooks?/gi, '')
+      .replace(/universe/gi, '')
+      .replace(/[-_:]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const cleanTarget = normalize(seriesName);
+  if (!cleanTarget) return false;
+
+  // If passed an array of series
+  const seriesList = Array.isArray(rawProductOrSeries)
+    ? rawProductOrSeries
+    : rawProductOrSeries?.series || [];
+
+  for (const s of seriesList) {
+    const sTitle = normalize(typeof s === 'string' ? s : s?.title);
+    if (sTitle && (sTitle.includes(cleanTarget) || cleanTarget.includes(sTitle))) {
+      return true;
+    }
+  }
+
+  // Check publication_name (Audible API returns the series name here!)
+  if (rawProductOrSeries?.publication_name) {
+    const pubName = normalize(rawProductOrSeries.publication_name);
+    if (pubName && (pubName.includes(cleanTarget) || cleanTarget.includes(pubName))) {
+      return true;
+    }
+  }
+
+  // Check subtitle
+  if (rawProductOrSeries?.subtitle) {
+    const sub = normalize(rawProductOrSeries.subtitle);
+    if (sub && (sub.includes(cleanTarget) || cleanTarget.includes(sub))) {
+      return true;
+    }
+  }
+
+  // Check title
+  if (rawProductOrSeries?.title) {
+    const tit = normalize(rawProductOrSeries.title);
+    if (tit && (tit.includes(cleanTarget) || cleanTarget.includes(tit))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -374,39 +422,75 @@ export async function scanWatchlistTargetLive(
   const cleanTarget = target.name.trim();
   const targetAsin = getASIN(target.url);
 
-  let queryParam = '';
-  if (target.type === 'Author') {
-    queryParam = targetAsin ? `author=${targetAsin}` : `author=${encodeURIComponent(cleanTarget)}`;
-  } else if (target.type === 'Series') {
-    queryParam = targetAsin ? `series=${targetAsin}` : `series=${encodeURIComponent(cleanTarget)}`;
-  } else if (target.type === 'Narrator') {
-    queryParam = targetAsin ? `narrator=${targetAsin}` : `narrator=${encodeURIComponent(cleanTarget)}`;
-  }
-
-  const catalogApiUrl = `https://api.audible.com/1.0/catalog/products?${queryParam}&num_results=25&products_sort_by=-ReleaseDate&response_groups=product_desc,contributors,media,series,product_attrs,rating`;
-
   let products: any[] = [];
 
-  try {
-    const res = await universalFetch<any>(catalogApiUrl, { responseType: 'json' });
-    if (res?.data?.products && Array.isArray(res.data.products)) {
-      products = res.data.products;
-    }
-  } catch (err) {
-    console.warn(`Live query failed for ${target.type}: ${target.name}`, err);
-  }
-
-  // If query by parameter returned 0 results, retry with keyword search
-  if (products.length === 0) {
+  if (target.type === 'Series') {
+    // Audible does not support `series=`. Search by title and keywords to get all series titles
+    const titleUrl = `https://api.audible.com/1.0/catalog/products?title=${encodeURIComponent(
+      cleanTarget
+    )}&num_results=30&response_groups=product_desc,contributors,media,series,product_attrs,rating`;
     const keywordUrl = `https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(
       cleanTarget
-    )}&num_results=20&products_sort_by=-ReleaseDate&response_groups=product_desc,contributors,media,series,product_attrs,rating`;
+    )}&num_results=30&response_groups=product_desc,contributors,media,series,product_attrs,rating`;
+
     try {
-      const res = await universalFetch<any>(keywordUrl, { responseType: 'json' });
+      const [resTitle, resKeywords] = await Promise.allSettled([
+        universalFetch<any>(titleUrl, { responseType: 'json' }),
+        universalFetch<any>(keywordUrl, { responseType: 'json' }),
+      ]);
+
+      const seenAsins = new Set<string>();
+      if (resTitle.status === 'fulfilled' && resTitle.value?.data?.products) {
+        for (const prod of resTitle.value.data.products) {
+          if (prod.asin && !seenAsins.has(prod.asin)) {
+            seenAsins.add(prod.asin);
+            products.push(prod);
+          }
+        }
+      }
+      if (resKeywords.status === 'fulfilled' && resKeywords.value?.data?.products) {
+        for (const prod of resKeywords.value.data.products) {
+          if (prod.asin && !seenAsins.has(prod.asin)) {
+            seenAsins.add(prod.asin);
+            products.push(prod);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`Series live query failed for ${target.name}`, err);
+    }
+  } else {
+    // Author or Narrator
+    let queryParam = '';
+    if (target.type === 'Author') {
+      queryParam = targetAsin ? `author=${targetAsin}` : `author=${encodeURIComponent(cleanTarget)}`;
+    } else if (target.type === 'Narrator') {
+      queryParam = targetAsin ? `narrator=${targetAsin}` : `narrator=${encodeURIComponent(cleanTarget)}`;
+    }
+
+    const catalogApiUrl = `https://api.audible.com/1.0/catalog/products?${queryParam}&num_results=25&products_sort_by=-ReleaseDate&response_groups=product_desc,contributors,media,series,product_attrs,rating`;
+
+    try {
+      const res = await universalFetch<any>(catalogApiUrl, { responseType: 'json' });
       if (res?.data?.products && Array.isArray(res.data.products)) {
         products = res.data.products;
       }
-    } catch {}
+    } catch (err) {
+      console.warn(`Live query failed for ${target.type}: ${target.name}`, err);
+    }
+
+    // If query by parameter returned 0 results, retry with keyword search
+    if (products.length === 0) {
+      const keywordUrl = `https://api.audible.com/1.0/catalog/products?keywords=${encodeURIComponent(
+        cleanTarget
+      )}&num_results=20&products_sort_by=-ReleaseDate&response_groups=product_desc,contributors,media,series,product_attrs,rating`;
+      try {
+        const res = await universalFetch<any>(keywordUrl, { responseType: 'json' });
+        if (res?.data?.products && Array.isArray(res.data.products)) {
+          products = res.data.products;
+        }
+      } catch {}
+    }
   }
 
   // If API was unavailable or returned nothing, supplement with internal database
@@ -458,8 +542,7 @@ export async function scanWatchlistTargetLive(
         continue; // Discard: Target was only an introducer or contributor
       }
     } else if (target.type === 'Series') {
-      const rawSeries = rawProduct.series || [{ title: p.seriesName }];
-      if (!isMatchingSeries(rawSeries, cleanTarget)) {
+      if (!isMatchingSeries(rawProduct, cleanTarget)) {
         continue; // Discard: Not part of this series
       }
     } else if (target.type === 'Narrator') {

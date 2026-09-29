@@ -15,7 +15,9 @@ import {
   Filter,
   Star,
   LayoutGrid,
-  List
+  List,
+  Grid3X3,
+  Settings,
 } from 'lucide-react';
 import { Genre } from '../types/audiobook';
 
@@ -35,8 +37,9 @@ interface ActionToolbarProps {
   onOpenAddDialog: () => void;
   onOpenWatchlistDialog: () => void;
   onOpenMuteListDialog: () => void;
-  viewMode: 'table' | 'grid';
-  setViewMode: (vm: 'table' | 'grid') => void;
+  onOpenPreferences: () => void;
+  viewMode: 'table' | 'grid' | 'compact_grid' | 'list';
+  setViewMode: (vm: 'table' | 'grid' | 'compact_grid' | 'list') => void;
   selectedIds: string[];
 }
 
@@ -44,6 +47,7 @@ export const ActionToolbar: React.FC<ActionToolbarProps> = ({
   onOpenAddDialog,
   onOpenWatchlistDialog,
   onOpenMuteListDialog,
+  onOpenPreferences,
   viewMode,
   setViewMode,
   selectedIds,
@@ -292,7 +296,7 @@ export const ActionToolbar: React.FC<ActionToolbarProps> = ({
             </select>
           </div>
 
-          {/* Table / Grid Switch */}
+          {/* View Mode Switcher (Table / Grid / Compact / List) */}
           <div className="flex items-center p-0.5 rounded-lg bg-slate-950 border border-slate-800 shrink-0">
             <button
               onClick={() => setViewMode('table')}
@@ -305,14 +309,32 @@ export const ActionToolbar: React.FC<ActionToolbarProps> = ({
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              title="Cover Art Grid"
+              title="Standard Grid"
               className={`p-1.5 rounded transition cursor-pointer ${
                 viewMode === 'grid' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
             </button>
+            <button
+              onClick={() => setViewMode('compact_grid')}
+              title="Compact Mobile Grid"
+              className={`p-1.5 rounded transition cursor-pointer ${
+                viewMode === 'compact_grid' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Grid3X3 className="h-3.5 w-3.5" />
+            </button>
           </div>
+
+          {/* Quick Preferences Button */}
+          <button
+            onClick={onOpenPreferences}
+            title="Configure Default Search & View Preferences"
+            className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-amber-400 transition cursor-pointer shrink-0"
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </button>
         </div>
 
       </div>

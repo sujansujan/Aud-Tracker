@@ -1,13 +1,14 @@
 import React from 'react';
 import { useTracker } from '../context/TrackerContext';
 import { PWAInstallButton } from './PWAInstallButton';
-import { Bell, Sparkles } from 'lucide-react';
+import { Bell, Settings } from 'lucide-react';
 
 interface StatusBarProps {
   onOpenNotifications: () => void;
+  onOpenPreferences?: () => void;
 }
 
-export const StatusBar: React.FC<StatusBarProps> = ({ onOpenNotifications }) => {
+export const StatusBar: React.FC<StatusBarProps> = ({ onOpenNotifications, onOpenPreferences }) => {
   const {
     books,
     watchlists,
@@ -19,7 +20,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ onOpenNotifications }) => 
   } = useTracker();
 
   return (
-    <footer className="h-9 bg-slate-900 border-t border-slate-800 px-3 sm:px-4 flex items-center justify-between text-[11px] text-slate-400 select-none shrink-0">
+    <footer className="min-h-9 pb-safe pt-1.5 bg-slate-900 border-t border-slate-800 px-3 sm:px-4 flex items-center justify-between text-[11px] text-slate-400 select-none shrink-0 z-10">
       
       {/* Left: AHK Status String */}
       <div className="flex items-center gap-2 truncate">
@@ -41,6 +42,16 @@ export const StatusBar: React.FC<StatusBarProps> = ({ onOpenNotifications }) => 
       {/* Right: Quick shortcuts */}
       <div className="flex items-center gap-3 shrink-0">
         <PWAInstallButton compact />
+
+        {onOpenPreferences && (
+          <button
+            onClick={onOpenPreferences}
+            className="flex items-center gap-1 text-slate-400 hover:text-white cursor-pointer"
+            title="App & Default Preferences"
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </button>
+        )}
 
         <button
           onClick={onOpenNotifications}

@@ -20,12 +20,26 @@ const DEFAULT_MUTELIST: MuteItem[] = [
   { id: 'm-2', type: 'Keyword', value: 'Dramatized Adaptation' },
 ];
 
+export interface AppPreferences {
+  defaultViewMode: 'table' | 'grid' | 'compact_grid' | 'list';
+  defaultSearchMode: 'Title' | 'Series' | 'Author' | 'Narrator';
+  defaultViewFilter: 'all' | 'upcoming' | 'today' | 'downloaded' | 'listened';
+}
+
+export const DEFAULT_PREFERENCES: AppPreferences = {
+  defaultViewMode: 'table',
+  defaultSearchMode: 'Title',
+  defaultViewFilter: 'all',
+};
+
 interface TrackerContextType {
   books: Audiobook[];
   watchlists: WatchlistItem[];
   muteList: MuteItem[];
   notifications: NotificationLogItem[];
   pushSettings: PushNotificationSettings;
+  preferences: AppPreferences;
+  updatePreferences: (partial: Partial<AppPreferences>) => void;
   unreadNotifCount: number;
   lastCheckedTime: string | null;
   isScanning: boolean;
@@ -100,9 +114,18 @@ const STORAGE_KEYS = {
   MUTELIST: 'audible_tracker_mutelist_ahk_v2',
   LAST_CHECK: 'audible_tracker_last_check_ahk_v2',
   SETTINGS: 'audible_tracker_settings_ahk_v2',
+  PREFERENCES: 'audible_tracker_preferences_ahk_v2',
 };
 
 export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [preferences, setPreferences] = useState<AppPreferences>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
+      if (saved) return { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) };
+    } catch {}
+    return DEFAULT_PREFERENCES;
+  });
+
   const [books, setBooks] = useState<Audiobook[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.BOOKS);
@@ -153,13 +176,29 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isScanning, setIsScanning] = useState(false);
   const [scanStatusText, setScanStatusText] = useState('Ready.');
 
-  // Filters
+  // Filters (respecting user default preferences)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [minRating, setMinRating] = useState(0);
-  const [viewFilter, setViewFilter] = useState<'all' | 'upcoming' | 'today' | 'downloaded' | 'listened'>('all');
+  const [viewFilter, setViewFilter] = useState<'all' | 'upcoming' | 'today' | 'downloaded' | 'listened'>(
+    preferences.defaultViewFilter || 'all'
+  );
   const [timeframeFilter, setTimeframeFilter] = useState<'all' | 'today' | 'week' | 'month' | 'tracked'>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'compact_grid' | 'list' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<'grid' | 'compact_grid' | 'list' | 'table'>(
+    preferences.defaultViewMode || 'table'
+  );
+
+  const updatePreferences = (partial: Partial<AppPreferences>) => {
+    setPreferences((prev) => {
+      const next = { ...prev, ...partial };
+      try {
+        localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(next));
+      } catch {}
+      if (partial.defaultViewMode) setViewMode(partial.defaultViewMode);
+      if (partial.defaultViewFilter) setViewFilter(partial.defaultViewFilter);
+      return next;
+    });
+  };
 
   // Audio preview state
   const [activeAudio, setActiveAudio] = useState<{ isPlaying: boolean; bookId: string | null; progress: number }>({
@@ -545,6 +584,8 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         muteList,
         notifications,
         pushSettings,
+        preferences,
+        updatePreferences,
         unreadNotifCount,
         lastCheckedTime,
         isScanning,

@@ -4,12 +4,17 @@
   :root {
     --font-display: 'Syne', sans-serif;
     --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
   }
   
   body {
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    overscroll-behavior-y: none;
   }
   
   h1, h2, h3, .font-display {
@@ -36,6 +41,18 @@
   background: rgba(148, 163, 184, 0.4);
 }
 
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
+}
+
 .pb-safe {
-  padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
+}
+
+.pl-safe {
+  padding-left: max(env(safe-area-inset-left, 0px), 0.5rem);
+}
+
+.pr-safe {
+  padding-right: max(env(safe-area-inset-right, 0px), 0.5rem);
 }

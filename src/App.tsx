@@ -7,6 +7,7 @@ import { StatusBar } from './components/StatusBar';
 import { AddBookDialog } from './components/AddBookDialog';
 import { WatchlistDialog } from './components/WatchlistDialog';
 import { MuteListDialog } from './components/MuteListDialog';
+import { PreferencesDialog } from './components/PreferencesDialog';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AudiobookCard } from './components/AudiobookCard';
 import { BookDetailModal } from './components/BookDetailModal';
@@ -15,7 +16,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { Audiobook } from './types/audiobook';
 import { getDaysUntil } from './utils/notifications';
-import { Headphones, Eye, ListFilter } from 'lucide-react';
+import { Headphones, Eye, Settings } from 'lucide-react';
 
 function TrackerMain() {
   const {
@@ -25,19 +26,21 @@ function TrackerMain() {
     selectedGenre,
     minRating,
     viewFilter,
+    viewMode,
+    setViewMode,
   } = useTracker();
 
   // Dialog visibility
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(false);
   const [isMuteListOpen, setIsMuteListOpen] = useState(false);
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [selectedBookForDetail, setSelectedBookForDetail] = useState<Audiobook | null>(null);
   const [selectedBookForMarkRead, setSelectedBookForMarkRead] = useState<Audiobook | null>(null);
 
   // Table selection & layout
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [showMobilePreview, setShowMobilePreview] = useState(false);
 
   // Filter & Sort (matching AHK SortBookList)
@@ -86,26 +89,35 @@ function TrackerMain() {
     });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased overflow-x-hidden">
       
-      {/* App Window Header */}
-      <header className="h-10 bg-slate-900/90 border-b border-slate-800 px-4 flex items-center justify-between shrink-0">
+      {/* App Window Header with Android Notch / Status Bar Safe-Area Inset */}
+      <header className="pt-safe pb-2 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 z-20">
         <div className="flex items-center gap-2">
-          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500 text-slate-950">
-            <Headphones className="h-3 w-3" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500 text-slate-950 shadow-sm">
+            <Headphones className="h-3.5 w-3.5" />
           </div>
-          <h1 className="font-display text-xs font-bold text-white tracking-wide">
+          <h1 className="font-display text-xs sm:text-sm font-bold text-white tracking-wide truncate">
             Audible Auto-Tracker &amp; Watchlist Monitor
           </h1>
         </div>
 
         {/* Header Right actions */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <PWAInstallButton compact />
 
           <button
+            onClick={() => setIsPreferencesOpen(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold transition cursor-pointer"
+            title="Search & View Preferences"
+          >
+            <Settings className="h-3.5 w-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+
+          <button
             onClick={() => setShowMobilePreview(!showMobilePreview)}
-            className={`lg:hidden flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold transition ${
+            className={`lg:hidden flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
               showMobilePreview ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300'
             }`}
           >
@@ -120,6 +132,7 @@ function TrackerMain() {
         onOpenAddDialog={() => setIsAddOpen(true)}
         onOpenWatchlistDialog={() => setIsWatchlistOpen(true)}
         onOpenMuteListDialog={() => setIsMuteListOpen(true)}
+        onOpenPreferences={() => setIsPreferencesOpen(true)}
         viewMode={viewMode}
         setViewMode={setViewMode}
         selectedIds={selectedIds}
@@ -136,7 +149,19 @@ function TrackerMain() {
               selectedIds={selectedIds}
               setSelectedIds={setSelectedIds}
             />
-          ) : (
+          ) : viewMode === 'grid' ? (
+            <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
+              {filteredBooks.map((book) => (
+                <AudiobookCard
+                  key={book.id}
+                  book={book}
+                  viewMode="grid"
+                  onSelect={(b) => setSelectedBookForDetail(b)}
+                  onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
+                />
+              ))}
+            </div>
+          ) : viewMode === 'compact_grid' ? (
             <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 p-1">
               {filteredBooks.map((book) => (
                 <AudiobookCard
@@ -148,11 +173,23 @@ function TrackerMain() {
                 />
               ))}
             </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto space-y-2 p-1">
+              {filteredBooks.map((book) => (
+                <AudiobookCard
+                  key={book.id}
+                  book={book}
+                  viewMode="list"
+                  onSelect={(b) => setSelectedBookForDetail(b)}
+                  onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
+                />
+              ))}
+            </div>
           )}
         </div>
 
         {/* Right Side: Audiobook Preview Panel */}
-        <div className={`${showMobilePreview ? 'block' : 'hidden'} lg:block`}>
+        <div className={`${showMobilePreview ? 'block' : 'hidden'} lg:block shrink-0`}>
           <PreviewPanel
             book={selectedBook}
             onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
@@ -161,8 +198,11 @@ function TrackerMain() {
 
       </main>
 
-      {/* Status Bar (matching AHK SB.SetText) */}
-      <StatusBar onOpenNotifications={() => setIsNotifOpen(true)} />
+      {/* Status Bar (with Android Gesture Bar Safe-Area Inset) */}
+      <StatusBar
+        onOpenNotifications={() => setIsNotifOpen(true)}
+        onOpenPreferences={() => setIsPreferencesOpen(true)}
+      />
 
       {/* Modals directly matching AHK GUI dialogs */}
       <AddBookDialog
@@ -178,6 +218,11 @@ function TrackerMain() {
       <MuteListDialog
         isOpen={isMuteListOpen}
         onClose={() => setIsMuteListOpen(false)}
+      />
+
+      <PreferencesDialog
+        isOpen={isPreferencesOpen}
+        onClose={() => setIsPreferencesOpen(false)}
       />
 
       {/* Detail & History modal for quick editing */}
