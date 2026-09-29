@@ -250,7 +250,10 @@ export const AddBookDialog: React.FC<AddBookDialogProps> = ({ isOpen, onClose })
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-5 animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       <div
         style={{
           backgroundColor: 'var(--md-sys-color-surface)',
@@ -258,9 +261,11 @@ export const AddBookDialog: React.FC<AddBookDialogProps> = ({ isOpen, onClose })
           color: 'var(--md-sys-color-on-surface)',
           boxShadow: 'var(--md-elevation-3)',
         }}
-        className="w-full max-w-xl rounded-3xl border flex flex-col max-h-[92vh] overflow-hidden select-none transition-colors duration-200"
+        className="w-full max-w-xl rounded-t-3xl sm:rounded-3xl border sm:border flex flex-col max-h-[92vh] overflow-hidden select-none transition-colors duration-200 animate-in slide-in-from-bottom sm:zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile drag handle */}
+        <div className="w-12 h-1.5 rounded-full bg-[var(--md-sys-color-outline-variant)] mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
         {/* Header */}
         <div
           style={{

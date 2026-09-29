@@ -35,7 +35,10 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
   const isSeriesFollowed = book.series ? isEntityTracked('series', book.series.name) : false;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       <div
         style={{
           backgroundColor: 'var(--md-sys-color-surface)',
@@ -43,14 +46,11 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
           color: 'var(--md-sys-color-on-surface)',
           boxShadow: 'var(--md-elevation-3)',
         }}
-        className="w-full max-w-2xl max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl border overflow-hidden select-none transition-colors duration-200"
+        className="w-full max-w-2xl max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl border sm:border overflow-hidden select-none transition-colors duration-200 animate-in slide-in-from-bottom sm:zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Mobile drag handle */}
-        <div
-          style={{ backgroundColor: 'var(--md-sys-color-surface-container)' }}
-          className="w-12 h-1 rounded-full mx-auto my-2 sm:hidden shrink-0"
-        />
+        <div className="w-12 h-1.5 rounded-full bg-[var(--md-sys-color-outline-variant)] mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
 
         {/* Top Header Bar */}
         <div
