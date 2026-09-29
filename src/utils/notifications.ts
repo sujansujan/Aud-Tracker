@@ -86,28 +86,88 @@ export function getDaysUntil(targetDateStr: string, fromDateStr = CURRENT_DATE_S
 }
 
 /**
- * Format relative countdown label
+ * Format date string into user-friendly format (e.g., Oct 14, 2026)
  */
-export function getReleaseCountdown(releaseDateStr: string): { label: string; urgency: 'today' | 'tomorrow' | 'week' | 'soon' | 'future' | 'released' } {
+export function formatReleaseDateFriendly(dateStr: string): string {
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = Number(parts[0]);
+      const month = Number(parts[1]) - 1;
+      const day = Number(parts[2]);
+      const date = new Date(year, month, day);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  } catch {}
+  return dateStr;
+}
+
+/**
+ * Format relative countdown label & badge details
+ */
+export function getReleaseCountdown(releaseDateStr: string): {
+  label: string;
+  urgency: 'today' | 'tomorrow' | 'week' | 'soon' | 'future' | 'released';
+  isToday: boolean;
+  daysUntil: number;
+  badgeText: string;
+} {
   const days = getDaysUntil(releaseDateStr);
+  const isToday = days === 0;
 
   if (days < 0) {
-    return { label: `Released ${Math.abs(days)}d ago`, urgency: 'released' };
+    return {
+      label: `Released ${Math.abs(days)}d ago`,
+      urgency: 'released',
+      isToday: false,
+      daysUntil: days,
+      badgeText: 'Released',
+    };
   }
   if (days === 0) {
-    return { label: 'Out Today!', urgency: 'today' };
+    return {
+      label: 'Out Today!',
+      urgency: 'today',
+      isToday: true,
+      daysUntil: 0,
+      badgeText: 'Releasing Today',
+    };
   }
   if (days === 1) {
-    return { label: 'Releases Tomorrow', urgency: 'tomorrow' };
+    return {
+      label: 'Releases Tomorrow',
+      urgency: 'tomorrow',
+      isToday: false,
+      daysUntil: 1,
+      badgeText: 'Tomorrow',
+    };
   }
   if (days <= 7) {
-    return { label: `In ${days} days (1 wk)`, urgency: 'week' };
+    return {
+      label: `In ${days} days (1 wk)`,
+      urgency: 'week',
+      isToday: false,
+      daysUntil: days,
+      badgeText: `In ${days} Days`,
+    };
   }
   if (days <= 30) {
-    return { label: `In ${days} days`, urgency: 'soon' };
+    return {
+      label: `In ${days} days`,
+      urgency: 'soon',
+      isToday: false,
+      daysUntil: days,
+      badgeText: `In ${days} Days`,
+    };
   }
   const weeks = Math.round(days / 7);
-  return { label: `In ${weeks} weeks`, urgency: 'future' };
+  return {
+    label: `In ${weeks} weeks`,
+    urgency: 'future',
+    isToday: false,
+    daysUntil: days,
+    badgeText: `In ${weeks} Wks`,
+  };
 }
 
 /**

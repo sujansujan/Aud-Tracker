@@ -31,7 +31,6 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     const container = containerRef.current;
     if (!container) return;
 
-    // Only allow pull-down if we are scrolled to the very top
     if (container.scrollTop > 5) return;
 
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -52,12 +51,10 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
       const deltaY = clientY - startYRef.current;
 
       if (deltaY > 0) {
-        // Dampen the pull with a square root curve
         const dampened = Math.min(100, Math.pow(deltaY, 0.82));
         setPullDistance(dampened);
         setIsPulling(true);
 
-        // Optional haptic tick when crossing threshold
         if (dampened >= PULL_THRESHOLD && pullDistance < PULL_THRESHOLD && typeof navigator !== 'undefined' && navigator.vibrate) {
           try {
             navigator.vibrate(12);
@@ -77,7 +74,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     setIsPulling(false);
 
     if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
-      setPullDistance(50); // Keep indicator visible during refresh
+      setPullDistance(50);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
           navigator.vibrate([15, 40, 15]);
@@ -111,7 +108,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     };
   }, [handleTouchMove, handleTouchEnd]);
 
-  const effectiveHeight = isRefreshing ? Math.max(pullDistance, 48) : pullDistance;
+  const effectiveHeight = isRefreshing ? Math.max(pullDistance, 50) : pullDistance;
   const isReady = pullDistance >= PULL_THRESHOLD;
 
   return (
@@ -126,28 +123,48 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     >
       {/* Pull Indicator Area */}
       <div
-        style={{ height: `${effectiveHeight}px` }}
-        className="transition-all duration-150 ease-out overflow-hidden flex items-center justify-center bg-slate-900/60 border-b border-slate-800/60 select-none shrink-0"
+        style={{
+          height: `${effectiveHeight}px`,
+          backgroundColor: 'transparent',
+        }}
+        className="transition-all duration-150 ease-out overflow-hidden flex items-center justify-center select-none shrink-0"
       >
         {effectiveHeight > 10 && (
-          <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-800/90 border border-slate-700/80 text-slate-300 shadow-lg">
+          <div
+            style={{
+              backgroundColor: 'var(--md-sys-color-surface)',
+              borderColor: 'var(--md-sys-color-primary)',
+              color: 'var(--md-sys-color-on-surface)',
+              boxShadow: 'var(--md-elevation-2)',
+            }}
+            className="flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-full border transition-all"
+          >
             {isRefreshing ? (
               <>
-                <RefreshCw className="h-3.5 w-3.5 text-amber-400 animate-spin" />
-                <span className="text-amber-300 font-bold">{refreshingText}</span>
+                <RefreshCw
+                  className="h-4 w-4 animate-spin"
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                />
+                <span style={{ color: 'var(--md-sys-color-primary)' }}>{refreshingText}</span>
               </>
             ) : isReady ? (
               <>
-                <RefreshCw className="h-3.5 w-3.5 text-amber-400 rotate-180 transition-transform duration-200" />
-                <span className="text-amber-400 font-bold">{releaseText}</span>
+                <RefreshCw
+                  className="h-4 w-4 rotate-180 transition-transform duration-200"
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                />
+                <span style={{ color: 'var(--md-sys-color-primary)' }}>{releaseText}</span>
               </>
             ) : (
               <>
                 <ArrowDown
-                  className="h-3.5 w-3.5 text-slate-400 transition-transform duration-150"
-                  style={{ transform: `rotate(${Math.min(180, (pullDistance / PULL_THRESHOLD) * 180)}deg)` }}
+                  className="h-4 w-4 transition-transform duration-150"
+                  style={{
+                    color: 'var(--md-sys-color-on-surface-variant)',
+                    transform: `rotate(${Math.min(180, (pullDistance / PULL_THRESHOLD) * 180)}deg)`,
+                  }}
                 />
-                <span className="text-slate-400">{pullText}</span>
+                <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }}>{pullText}</span>
               </>
             )}
           </div>

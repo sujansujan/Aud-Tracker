@@ -7,31 +7,36 @@ import {
   Grid3X3,
   Table,
   List,
-  Sparkles,
   Calendar,
   CheckCircle2,
   Clock,
   DownloadCloud,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 
 interface HomeFilterBarProps {
   viewMode: 'table' | 'grid' | 'compact_grid' | 'list';
   setViewMode: (mode: 'table' | 'grid' | 'compact_grid' | 'list') => void;
   totalFilteredCount: number;
+  selectedCount?: number;
+  onToggleSelectAll?: () => void;
+  isAllSelected?: boolean;
 }
 
 export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
   viewMode,
   setViewMode,
   totalFilteredCount,
+  selectedCount = 0,
+  onToggleSelectAll,
+  isAllSelected = false,
 }) => {
   const {
     searchQuery,
     setSearchQuery,
     viewFilter,
     setViewFilter,
-    selectedGenre,
-    setSelectedGenre,
   } = useTracker();
 
   const filterTabs: Array<{
@@ -39,89 +44,137 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
     label: string;
     icon?: React.ElementType;
   }> = [
-    { id: 'all', label: 'All' },
+    { id: 'all', label: 'All Releases' },
     { id: 'upcoming', label: 'Upcoming', icon: Clock },
-    { id: 'today', label: 'Today', icon: Calendar },
+    { id: 'today', label: 'Releasing Today', icon: Calendar },
     { id: 'downloaded', label: 'Downloaded', icon: DownloadCloud },
     { id: 'listened', label: 'Listened', icon: CheckCircle2 },
   ];
 
   return (
-    <div className="bg-slate-900/90 border-b border-slate-800/80 px-3 sm:px-4 py-2.5 space-y-2">
-      {/* Row 1: Search Input & View Switcher */}
-      <div className="flex items-center gap-2">
-        {/* Streamlined Search Bar */}
+    <div
+      style={{
+        backgroundColor: 'var(--md-sys-color-surface)',
+        borderColor: 'var(--md-sys-color-outline-variant)',
+      }}
+      className="border-b px-3 sm:px-5 py-3 space-y-3 transition-colors duration-200"
+    >
+      {/* Row 1: Material 3 Search Bar Pill + Select All FAB + Segmented View Switcher */}
+      <div className="flex items-center gap-2.5">
+        {/* Material 3 Search Bar Pill */}
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+          />
           <input
             type="text"
-            placeholder="Search titles, authors, series, narrators..."
+            placeholder="Search audiobooks, authors, series, or narrators..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-400 focus:outline-none text-xs text-slate-200 placeholder-slate-500 transition"
+            className="md-input w-full min-h-[46px] pl-11 pr-10 text-xs sm:text-sm font-medium"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-0.5 rounded cursor-pointer"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full transition-transform active:scale-90 cursor-pointer"
+              style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
             >
-              <X className="h-3 w-3" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        {/* View Switcher: Table / Grid / Compact Grid / List */}
-        <div className="flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 shrink-0">
+        {/* Master Multi-Select Button (Material Tonal / Active Pill) */}
+        {onToggleSelectAll && (
+          <button
+            type="button"
+            onClick={onToggleSelectAll}
+            title={isAllSelected ? 'Deselect all audiobooks' : 'Select all audiobooks'}
+            style={{
+              backgroundColor: isAllSelected
+                ? 'var(--md-sys-color-primary)'
+                : selectedCount > 0
+                ? 'var(--md-sys-color-primary-container)'
+                : 'var(--md-sys-color-surface-container)',
+              color: isAllSelected
+                ? 'var(--md-sys-color-on-primary)'
+                : selectedCount > 0
+                ? 'var(--md-sys-color-on-primary-container)'
+                : 'var(--md-sys-color-on-surface)',
+              borderColor: 'var(--md-sys-color-outline-variant)',
+            }}
+            className="min-h-[46px] px-3.5 rounded-full border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0 active:scale-95"
+          >
+            {isAllSelected ? (
+              <CheckSquare className="h-4 w-4 stroke-[2.5]" />
+            ) : (
+              <Square className="h-4 w-4" style={{ color: 'var(--md-sys-color-on-surface-variant)' }} />
+            )}
+            <span className="hidden sm:inline">
+              {isAllSelected ? 'All Selected' : selectedCount > 0 ? `${selectedCount} Selected` : 'Select All'}
+            </span>
+          </button>
+        )}
+
+        {/* Material 3 Segmented View Switcher */}
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="flex items-center p-1 rounded-2xl border shrink-0 shadow-sm"
+        >
           <button
             onClick={() => setViewMode('grid')}
             title="Standard Grid"
-            className={`p-1.5 rounded-lg transition cursor-pointer ${
-              viewMode === 'grid'
-                ? 'bg-amber-500 text-slate-950 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            style={{
+              backgroundColor: viewMode === 'grid' ? 'var(--md-sys-color-primary)' : 'transparent',
+              color: viewMode === 'grid' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl transition-all cursor-pointer font-bold"
           >
-            <LayoutGrid className="h-3.5 w-3.5" />
+            <LayoutGrid className="h-4 w-4" />
           </button>
           <button
             onClick={() => setViewMode('compact_grid')}
-            title="Compact Mobile Grid"
-            className={`p-1.5 rounded-lg transition cursor-pointer ${
-              viewMode === 'compact_grid'
-                ? 'bg-amber-500 text-slate-950 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            title="Compact Grid"
+            style={{
+              backgroundColor: viewMode === 'compact_grid' ? 'var(--md-sys-color-primary)' : 'transparent',
+              color: viewMode === 'compact_grid' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl transition-all cursor-pointer font-bold"
           >
-            <Grid3X3 className="h-3.5 w-3.5" />
+            <Grid3X3 className="h-4 w-4" />
           </button>
           <button
             onClick={() => setViewMode('table')}
             title="Dense Table View"
-            className={`p-1.5 rounded-lg transition cursor-pointer ${
-              viewMode === 'table'
-                ? 'bg-amber-500 text-slate-950 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            style={{
+              backgroundColor: viewMode === 'table' ? 'var(--md-sys-color-primary)' : 'transparent',
+              color: viewMode === 'table' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl transition-all cursor-pointer font-bold"
           >
-            <Table className="h-3.5 w-3.5" />
+            <Table className="h-4 w-4" />
           </button>
           <button
             onClick={() => setViewMode('list')}
             title="Expanded List"
-            className={`p-1.5 rounded-lg transition cursor-pointer ${
-              viewMode === 'list'
-                ? 'bg-amber-500 text-slate-950 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
+            style={{
+              backgroundColor: viewMode === 'list' ? 'var(--md-sys-color-primary)' : 'transparent',
+              color: viewMode === 'list' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl transition-all cursor-pointer font-bold"
           >
-            <List className="h-3.5 w-3.5" />
+            <List className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Row 2: Status Filter Tabs & Results count */}
+      {/* Row 2: Material 3 Filter Chips (Pill Shaped) + Count */}
       <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5">
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {filterTabs.map((tab) => {
             const isSelected = viewFilter === tab.id;
             const Icon = tab.icon;
@@ -129,21 +182,20 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setViewFilter(tab.id)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 ${
-                  isSelected
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                    : 'bg-slate-950/70 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                }`}
+                className={`md-chip ${isSelected ? 'md-chip-active shadow-sm' : ''}`}
               >
-                {Icon && <Icon className={`h-3 w-3 ${isSelected ? 'text-slate-950' : 'text-slate-500'}`} />}
+                {Icon && <Icon className="h-3.5 w-3.5" />}
                 <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="text-[11px] text-slate-500 font-medium shrink-0 hidden sm:block">
-          Showing <span className="text-slate-300 font-bold">{totalFilteredCount}</span> audiobooks
+        <div
+          style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+          className="text-xs font-semibold shrink-0 hidden sm:block tabular-nums"
+        >
+          <span style={{ color: 'var(--md-sys-color-on-surface)' }} className="font-extrabold">{totalFilteredCount}</span> audiobooks
         </div>
       </div>
     </div>

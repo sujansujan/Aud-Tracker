@@ -7,6 +7,7 @@ import { PreviewPanel } from './components/PreviewPanel';
 import { StatusBar } from './components/StatusBar';
 import { AddBookDialog } from './components/AddBookDialog';
 import { SettingsDialog } from './components/SettingsDialog';
+import { HamburgerDrawer } from './components/HamburgerDrawer';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AudiobookCard } from './components/AudiobookCard';
 import { BookDetailModal } from './components/BookDetailModal';
@@ -17,7 +18,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { Audiobook } from './types/audiobook';
 import { getDaysUntil } from './utils/notifications';
-import { Headphones, Plus, Settings, Eye } from 'lucide-react';
+import { Headphones, Plus, Settings, Eye, Menu, Sun, Moon } from 'lucide-react';
 
 function TrackerMain() {
   const {
@@ -31,16 +32,20 @@ function TrackerMain() {
     setViewMode,
     runScheduledScan,
     isScanning,
+    languageFilter,
+    theme,
+    toggleTheme,
   } = useTracker();
 
   // Dialog visibility
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [selectedBookForDetail, setSelectedBookForDetail] = useState<Audiobook | null>(null);
   const [selectedBookForMarkRead, setSelectedBookForMarkRead] = useState<Audiobook | null>(null);
 
-  // Table selection & layout
+  // Multi-selection across all views
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
 
@@ -93,89 +98,183 @@ function TrackerMain() {
     await runScheduledScan(false);
   };
 
+  const handleToggleSelectBook = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (filteredBooks.length > 0 && selectedIds.length >= filteredBooks.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredBooks.map((b) => b.id));
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased overflow-x-hidden">
-      {/* Clean App Header (Home Screen) */}
-      <header className="pt-safe pb-2.5 bg-slate-900 border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20">
-        {/* Brand / Logo */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-bold shadow-md">
-            <Headphones className="h-4 w-4" />
-          </div>
-          <div>
-            <h1 className="font-display text-xs sm:text-sm font-bold text-white tracking-wide truncate">
-              Audible Tracker
-            </h1>
+    <div
+      style={{ backgroundColor: 'var(--md-sys-color-background)', color: 'var(--md-sys-color-on-surface)' }}
+      className="min-h-screen flex flex-col font-sans select-none antialiased overflow-x-hidden transition-colors duration-250"
+    >
+      {/* Modern Material Design Top App Bar */}
+      <header
+        style={{
+          backgroundColor: 'var(--md-sys-color-surface)',
+          borderColor: 'var(--md-sys-color-outline-variant)',
+        }}
+        className="pt-safe pb-3 px-3 sm:px-5 flex items-center justify-between border-b shadow-sm shrink-0 z-20 transition-colors duration-200"
+      >
+        {/* Left Side: Material Navigation Drawer Button + Brand Identity */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5">
+          {/* Hamburger Menu (Large 44px Material Touch Target) */}
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="md-btn-icon shadow-sm"
+            aria-label="Open navigation menu and watchlists"
+            title="Open Menu (Tracked Authors, Series, Narrators & Settings)"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <div className="flex items-center gap-2.5">
+            <div
+              style={{
+                backgroundColor: 'var(--md-sys-color-primary)',
+                color: 'var(--md-sys-color-on-primary)',
+              }}
+              className="flex h-9 w-9 items-center justify-center rounded-2xl font-bold shadow-md transition-transform active:scale-95"
+            >
+              <Headphones className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-display text-sm sm:text-base font-extrabold tracking-wide truncate">
+                  Audible Tracker
+                </h1>
+                <span
+                  style={{
+                    backgroundColor: 'var(--md-sys-color-primary-container)',
+                    color: 'var(--md-sys-color-on-primary-container)',
+                    borderColor: 'var(--md-sys-color-primary)',
+                  }}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold border hidden sm:inline-flex items-center"
+                >
+                  {theme === 'dark' ? '🧛 Dracula' : '☀️ Alucard'}
+                </span>
+              </div>
+              {languageFilter === 'all_languages' && (
+                <span
+                  style={{ color: 'var(--md-sys-color-accent-orange)' }}
+                  className="text-[10px] font-bold hidden sm:inline block"
+                >
+                  • Multilingual Mode
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Home Screen Actions: Plus button & Settings button */}
+        {/* Right Side Actions: Material Theme Toggle, Large + Add Button, Settings, Preview */}
         <div className="flex items-center gap-2 shrink-0">
-          <PWAInstallButton compact />
-
-          {/* Plus Button to add new items */}
+          {/* Material Theme Mode Switcher (Alucard Light / Dracula Dark) */}
           <button
-            onClick={() => setIsAddOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer"
-            title="Add audiobook, series, author, or narrator"
+            onClick={toggleTheme}
+            className="md-btn-icon shadow-sm"
+            title={theme === 'dark' ? 'Switch to Alucard Light Mode' : 'Switch to Dracula Dark Mode'}
+            aria-label="Toggle theme"
           >
-            <Plus className="h-4 w-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Add</span>
+            {theme === 'dark' ? (
+              <Sun className="h-5 w-5 text-amber-300 transition-transform rotate-0 hover:rotate-45" />
+            ) : (
+              <Moon className="h-5 w-5 text-purple-600 transition-transform rotate-0 hover:-rotate-12" />
+            )}
           </button>
 
-          {/* Settings Button */}
+          <PWAInstallButton compact />
+
+          {/* Material 3 Floating Action Button (FAB Style) for + Add */}
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className="md-btn-fab min-h-[44px] px-4 sm:px-5 text-xs sm:text-sm"
+            title="Add audiobook, series, author, or narrator"
+          >
+            <Plus className="h-5 w-5 stroke-[2.5]" />
+            <span>Add</span>
+          </button>
+
+          {/* Generously Sized Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-300 hover:text-white transition cursor-pointer"
-            title="Settings & Backup (Export / Import)"
+            className="md-btn-icon shadow-sm"
+            title="Settings & Backup"
+            aria-label="Settings"
           >
-            <Settings className="h-4 w-4 text-amber-400" />
+            <Settings className="h-5 w-5" style={{ color: 'var(--md-sys-color-primary)' }} />
           </button>
 
           {/* Preview toggle on mobile */}
           <button
             onClick={() => setShowMobilePreview(!showMobilePreview)}
-            className={`lg:hidden flex items-center gap-1 p-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-              showMobilePreview
-                ? 'bg-amber-500 text-slate-950'
-                : 'bg-slate-800 text-slate-300 border border-slate-700/80'
+            className={`lg:hidden md-btn-icon ${
+              showMobilePreview ? 'ring-2 ring-[var(--md-sys-color-primary)]' : ''
             }`}
             title="Toggle preview panel"
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-5 w-5" />
           </button>
         </div>
       </header>
 
-      {/* Streamlined Home Filter & View Bar */}
+      {/* Streamlined Material 3 Home Filter & Search Bar */}
       <HomeFilterBar
         viewMode={viewMode}
         setViewMode={setViewMode}
         totalFilteredCount={filteredBooks.length}
+        selectedCount={selectedIds.length}
+        onToggleSelectAll={handleToggleSelectAll}
+        isAllSelected={filteredBooks.length > 0 && selectedIds.length >= filteredBooks.length}
       />
 
       {/* Main Workspace with Pull-to-Refresh */}
-      <main className="flex-1 flex flex-col lg:flex-row p-2.5 sm:p-3 gap-3 overflow-hidden">
+      <main className="flex-1 flex flex-col lg:flex-row p-2.5 sm:p-4 gap-3.5 overflow-hidden">
         {/* Book View (wrapped with smooth pull-to-refresh) */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/30">
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container-low)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="flex-1 flex flex-col min-w-0 overflow-hidden rounded-3xl border shadow-sm transition-colors duration-200"
+        >
           <PullToRefresh
             onRefresh={handlePullRefresh}
             isRefreshing={isScanning}
             className="flex-1 h-full"
           >
             {filteredBooks.length === 0 ? (
-              <div className="h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center text-slate-500">
-                <Headphones className="h-10 w-10 text-slate-700 mb-3" />
-                <h3 className="text-sm font-bold text-slate-400 mb-1">No audiobooks match your filter</h3>
-                <p className="text-xs text-slate-500 max-w-sm mb-4">
-                  Try adjusting your search query, or tap the <span className="text-amber-400 font-semibold">+ Add</span> button above to track new titles, authors, or series.
+              <div className="h-full min-h-[320px] flex flex-col items-center justify-center p-8 text-center">
+                <div
+                  style={{ backgroundColor: 'var(--md-sys-color-surface-container)' }}
+                  className="h-16 w-16 rounded-full flex items-center justify-center mb-4 shadow-inner"
+                >
+                  <Headphones
+                    className="h-8 w-8"
+                    style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                  />
+                </div>
+                <h3 className="text-base font-bold mb-1">No audiobooks found</h3>
+                <p
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                  className="text-xs max-w-sm mb-6 leading-relaxed"
+                >
+                  Try adjusting your search or filters, or tap the primary <span style={{ color: 'var(--md-sys-color-primary)' }} className="font-bold">+ Add</span> button to discover or add books.
                 </p>
                 <button
                   onClick={() => setIsAddOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow"
+                  className="md-btn-fab min-h-[46px] px-6 text-sm"
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Add New Item</span>
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Add New Audiobook</span>
                 </button>
               </div>
             ) : viewMode === 'table' ? (
@@ -185,36 +284,42 @@ function TrackerMain() {
                 setSelectedIds={setSelectedIds}
               />
             ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 p-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-3 sm:p-4">
                 {filteredBooks.map((book) => (
                   <AudiobookCard
                     key={book.id}
                     book={book}
                     viewMode="grid"
+                    isSelected={selectedIds.includes(book.id)}
+                    onToggleSelect={handleToggleSelectBook}
                     onSelect={(b) => setSelectedBookForDetail(b)}
                     onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
                   />
                 ))}
               </div>
             ) : viewMode === 'compact_grid' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5 p-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 p-3">
                 {filteredBooks.map((book) => (
                   <AudiobookCard
                     key={book.id}
                     book={book}
                     viewMode="compact_grid"
+                    isSelected={selectedIds.includes(book.id)}
+                    onToggleSelect={handleToggleSelectBook}
                     onSelect={(b) => setSelectedBookForDetail(b)}
                     onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
                   />
                 ))}
               </div>
             ) : (
-              <div className="space-y-2 p-3">
+              <div className="space-y-3 p-3 sm:p-4">
                 {filteredBooks.map((book) => (
                   <AudiobookCard
                     key={book.id}
                     book={book}
                     viewMode="list"
+                    isSelected={selectedIds.includes(book.id)}
+                    onToggleSelect={handleToggleSelectBook}
                     onSelect={(b) => setSelectedBookForDetail(b)}
                     onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
                   />
@@ -224,7 +329,7 @@ function TrackerMain() {
           </PullToRefresh>
         </div>
 
-        {/* Right Side: Audiobook Preview Panel */}
+        {/* Right Side: Material Audiobook Preview Panel */}
         <div className={`${showMobilePreview ? 'block' : 'hidden'} lg:block shrink-0`}>
           <PreviewPanel
             book={selectedBook}
@@ -233,16 +338,26 @@ function TrackerMain() {
         </div>
       </main>
 
-      {/* Floating Batch Action Bar (appears only when items are selected) */}
+      {/* Floating Batch Action Bar (Material Action Pill) */}
       <FloatingBatchBar
         selectedIds={selectedIds}
+        totalFilteredCount={filteredBooks.length}
         onClearSelection={() => setSelectedIds([])}
+        onSelectAll={() => setSelectedIds(filteredBooks.map((b) => b.id))}
       />
 
       {/* Status Bar */}
       <StatusBar
         onOpenNotifications={() => setIsNotifOpen(true)}
         onOpenPreferences={() => setIsSettingsOpen(true)}
+      />
+
+      {/* Hamburger Drawer Menu */}
+      <HamburgerDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        onOpenAddModal={() => setIsAddOpen(true)}
+        onOpenSettingsModal={() => setIsSettingsOpen(true)}
       />
 
       {/* Modals & Dialogs */}

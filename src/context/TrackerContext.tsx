@@ -25,12 +25,16 @@ export interface AppPreferences {
   defaultViewMode: 'table' | 'grid' | 'compact_grid' | 'list';
   defaultSearchMode: 'Title' | 'Series' | 'Author' | 'Narrator';
   defaultViewFilter: 'all' | 'upcoming' | 'today' | 'downloaded' | 'listened';
+  languageFilter: 'english_only' | 'all_languages';
+  theme: 'light' | 'dark';
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultViewMode: 'table',
   defaultSearchMode: 'Title',
   defaultViewFilter: 'all',
+  languageFilter: 'english_only',
+  theme: 'light', // Alucard Light Mode is the default
 };
 
 export interface ToastMessage {
@@ -47,6 +51,11 @@ interface TrackerContextType {
   pushSettings: PushNotificationSettings;
   preferences: AppPreferences;
   updatePreferences: (partial: Partial<AppPreferences>) => void;
+  languageFilter: 'english_only' | 'all_languages';
+  setLanguageFilter: (f: 'english_only' | 'all_languages') => void;
+  theme: 'light' | 'dark';
+  setTheme: (t: 'light' | 'dark') => void;
+  toggleTheme: () => void;
   unreadNotifCount: number;
   lastCheckedTime: string | null;
   isScanning: boolean;
@@ -204,6 +213,57 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     preferences.defaultViewMode || 'table'
   );
 
+  const [languageFilter, setLanguageFilterState] = useState<'english_only' | 'all_languages'>(
+    preferences.languageFilter || 'english_only'
+  );
+
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('audible_tracker_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (preferences.theme === 'dark' || preferences.theme === 'light') return preferences.theme;
+    } catch {}
+    return 'light'; // Alucard Light is default
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dracula' : 'alucard');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', theme === 'dark' ? '#282a36' : '#f8f8f2');
+    }
+    try {
+      localStorage.setItem('audible_tracker_theme', theme);
+    } catch {}
+  }, [theme]);
+
+  const setTheme = (newTheme: 'light' | 'dark') => {
+    setThemeState(newTheme);
+    updatePreferences({ theme: newTheme });
+    showToast(
+      newTheme === 'dark' ? 'Switched to Dracula Dark Mode 🧛' : 'Switched to Alucard Light Mode ☀️',
+      'info'
+    );
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  const setLanguageFilter = (lang: 'english_only' | 'all_languages') => {
+    setLanguageFilterState(lang);
+    updatePreferences({ languageFilter: lang });
+    showToast(
+      lang === 'english_only' ? 'Filtered to English releases only' : 'Tracking all languages (German, Spanish, French, etc.)',
+      'info'
+    );
+  };
+
   const updatePreferences = (partial: Partial<AppPreferences>) => {
     setPreferences((prev) => {
       const next = { ...prev, ...partial };
@@ -212,6 +272,8 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } catch {}
       if (partial.defaultViewMode) setViewMode(partial.defaultViewMode);
       if (partial.defaultViewFilter) setViewFilter(partial.defaultViewFilter);
+      if (partial.languageFilter) setLanguageFilterState(partial.languageFilter);
+      if (partial.theme) setThemeState(partial.theme);
       return next;
     });
   };
@@ -418,7 +480,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       for (let i = 0; i < seriesList.length; i++) {
         const item = seriesList[i];
         setScanStatusText(`Scanning series (${i + 1}/${seriesList.length}): ${item.name}...`);
-        const found = await scanWatchlistTargetLive(item, books, muteList);
+        const found = await scanWatchlistTargetLive(item, books, muteList, languageFilter);
         if (found.length > 0) {
           found.forEach((nb) => addBook(nb));
           totalNew += found.length;
@@ -430,7 +492,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       for (let i = 0; i < authorList.length; i++) {
         const item = authorList[i];
         setScanStatusText(`Scanning author (${i + 1}/${authorList.length}): ${item.name}...`);
-        const found = await scanWatchlistTargetLive(item, books, muteList);
+        const found = await scanWatchlistTargetLive(item, books, muteList, languageFilter);
         if (found.length > 0) {
           found.forEach((nb) => addBook(nb));
           totalNew += found.length;
@@ -442,7 +504,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       for (let i = 0; i < narratorList.length; i++) {
         const item = narratorList[i];
         setScanStatusText(`Scanning narrator (${i + 1}/${narratorList.length}): ${item.name}...`);
-        const found = await scanWatchlistTargetLive(item, books, muteList);
+        const found = await scanWatchlistTargetLive(item, books, muteList, languageFilter);
         if (found.length > 0) {
           found.forEach((nb) => addBook(nb));
           totalNew += found.length;
@@ -472,7 +534,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsScanning(true);
     let count = 0;
     try {
-      const found = await scanWatchlistTargetLive(target, books, muteList);
+      const found = await scanWatchlistTargetLive(target, books, muteList, languageFilter);
       found.forEach((b) => addBook(b));
       count = found.length;
       setScanStatusText(`Scan complete for ${target.name}. Found ${count} new release(s).`);
@@ -716,6 +778,11 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         pushSettings,
         preferences,
         updatePreferences,
+        languageFilter,
+        setLanguageFilter,
+        theme,
+        setTheme,
+        toggleTheme,
         unreadNotifCount,
         lastCheckedTime,
         isScanning,

@@ -21,6 +21,8 @@ import {
   Trash2,
   Plus,
   ExternalLink,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface SettingsDialogProps {
@@ -47,6 +49,8 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     pushSettings,
     updatePushSettings,
     requestSystemNotificationPermission,
+    theme,
+    setTheme,
     showToast,
   } = useTracker();
 
@@ -134,63 +138,98 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-5 animate-in fade-in duration-200">
       <div
-        className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+        style={{
+          backgroundColor: 'var(--md-sys-color-surface)',
+          borderColor: 'var(--md-sys-color-outline-variant)',
+          color: 'var(--md-sys-color-on-surface)',
+          boxShadow: 'var(--md-elevation-3)',
+        }}
+        className="w-full max-w-2xl rounded-3xl border flex flex-col max-h-[92vh] overflow-hidden select-none transition-colors duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-bold shadow">
-              <Settings className="h-4 w-4" />
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container-low)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="flex items-center justify-between p-4 sm:p-5 border-b shrink-0"
+        >
+          <div className="flex items-center gap-3">
+            <div
+              style={{
+                backgroundColor: 'var(--md-sys-color-primary)',
+                color: 'var(--md-sys-color-on-primary)',
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl font-bold shadow-md"
+            >
+              <Settings className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="font-display text-sm font-bold text-white">Settings &amp; Preferences</h3>
-              <p className="text-[11px] text-slate-400">Library defaults, backup export/import, and rules</p>
+              <h3 className="font-display text-base sm:text-lg font-extrabold tracking-wide">
+                Settings &amp; Preferences
+              </h3>
+              <p
+                style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                className="text-xs"
+              >
+                Theme, default layout, watchlists, and backup tools
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            className="md-btn-icon shadow-xs"
+            aria-label="Close dialog"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1 px-4 pt-2.5 border-b border-slate-800 overflow-x-auto shrink-0 bg-slate-950/40">
+        {/* Tab Navigation (Material 3 Segmented Pill Row) */}
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="flex items-center gap-1.5 px-4 pt-2.5 border-b overflow-x-auto shrink-0"
+        >
           <button
             onClick={() => setActiveTab('preferences')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition cursor-pointer shrink-0 ${
-              activeTab === 'preferences'
-                ? 'border-amber-500 text-amber-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            style={{
+              backgroundColor: activeTab === 'preferences' ? 'var(--md-sys-color-surface)' : 'transparent',
+              color: activeTab === 'preferences' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)',
+              borderColor: activeTab === 'preferences' ? 'var(--md-sys-color-primary)' : 'transparent',
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-t-2xl border-b-2 transition cursor-pointer shrink-0 shadow-xs"
           >
             <Sliders className="h-3.5 w-3.5" />
-            <span>Preferences</span>
+            <span>Theme &amp; Displays</span>
           </button>
 
           <button
             onClick={() => setActiveTab('export_import')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition cursor-pointer shrink-0 ${
-              activeTab === 'export_import'
-                ? 'border-amber-500 text-amber-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            style={{
+              backgroundColor: activeTab === 'export_import' ? 'var(--md-sys-color-surface)' : 'transparent',
+              color: activeTab === 'export_import' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)',
+              borderColor: activeTab === 'export_import' ? 'var(--md-sys-color-primary)' : 'transparent',
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-t-2xl border-b-2 transition cursor-pointer shrink-0 shadow-xs"
           >
             <HardDriveDownload className="h-3.5 w-3.5" />
-            <span>Export &amp; Import</span>
+            <span>Backup &amp; Restore</span>
           </button>
 
           <button
             onClick={() => setActiveTab('watchlists')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition cursor-pointer shrink-0 ${
-              activeTab === 'watchlists'
-                ? 'border-amber-500 text-amber-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            style={{
+              backgroundColor: activeTab === 'watchlists' ? 'var(--md-sys-color-surface)' : 'transparent',
+              color: activeTab === 'watchlists' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)',
+              borderColor: activeTab === 'watchlists' ? 'var(--md-sys-color-primary)' : 'transparent',
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-t-2xl border-b-2 transition cursor-pointer shrink-0 shadow-xs"
           >
             <ClipboardList className="h-3.5 w-3.5" />
             <span>Watchlists ({watchlists.length})</span>
@@ -198,11 +237,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
           <button
             onClick={() => setActiveTab('mutelist')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition cursor-pointer shrink-0 ${
-              activeTab === 'mutelist'
-                ? 'border-amber-500 text-amber-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            style={{
+              backgroundColor: activeTab === 'mutelist' ? 'var(--md-sys-color-surface)' : 'transparent',
+              color: activeTab === 'mutelist' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)',
+              borderColor: activeTab === 'mutelist' ? 'var(--md-sys-color-primary)' : 'transparent',
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-t-2xl border-b-2 transition cursor-pointer shrink-0 shadow-xs"
           >
             <VolumeX className="h-3.5 w-3.5" />
             <span>Mute Rules ({muteList.length})</span>
@@ -210,11 +250,12 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
           <button
             onClick={() => setActiveTab('notifications')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition cursor-pointer shrink-0 ${
-              activeTab === 'notifications'
-                ? 'border-amber-500 text-amber-400 bg-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+            style={{
+              backgroundColor: activeTab === 'notifications' ? 'var(--md-sys-color-surface)' : 'transparent',
+              color: activeTab === 'notifications' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-on-surface-variant)',
+              borderColor: activeTab === 'notifications' ? 'var(--md-sys-color-primary)' : 'transparent',
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-t-2xl border-b-2 transition cursor-pointer shrink-0 shadow-xs"
           >
             <Bell className="h-3.5 w-3.5" />
             <span>Alerts</span>
@@ -222,16 +263,77 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </div>
 
         {/* Tab Contents */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-          {/* TAB 1: Preferences */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {/* TAB 1: Preferences & Theme */}
           {activeTab === 'preferences' && (
-            <div className="space-y-5">
+            <div className="space-y-6">
+              {/* Theme Selector (Material 3 Dracula & Alucard Cards) */}
+              <div className="space-y-2.5">
+                <label
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                  className="text-xs font-bold uppercase tracking-wider block"
+                >
+                  Color Theme (Material Design)
+                </label>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Option 1: Alucard (Light Mode - Default) */}
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    style={{
+                      backgroundColor: theme === 'light' ? 'var(--md-sys-color-primary-container)' : 'var(--md-sys-color-surface-container-low)',
+                      borderColor: theme === 'light' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-outline-variant)',
+                      color: theme === 'light' ? 'var(--md-sys-color-on-primary-container)' : 'var(--md-sys-color-on-surface)',
+                    }}
+                    className="p-4 rounded-3xl border-2 text-left transition cursor-pointer flex flex-col justify-between shadow-xs active:scale-98"
+                  >
+                    <div className="flex items-center justify-between w-full mb-2">
+                      <div className="flex items-center gap-2 font-bold text-sm">
+                        <Sun className="h-5 w-5 text-amber-500" />
+                        <span>Alucard Light (Default)</span>
+                      </div>
+                      {theme === 'light' && <Check className="h-4 w-4 stroke-[3]" />}
+                    </div>
+                    <p className="text-xs opacity-80 leading-relaxed">
+                      Clean Dracula light theme with #f8f8f2 canvas, deep navy text, and vibrant purple accents.
+                    </p>
+                  </button>
+
+                  {/* Option 2: Dracula (Dark Mode) */}
+                  <button
+                    type="button"
+                    onClick={() => setTheme('dark')}
+                    style={{
+                      backgroundColor: theme === 'dark' ? 'var(--md-sys-color-primary-container)' : 'var(--md-sys-color-surface-container-low)',
+                      borderColor: theme === 'dark' ? 'var(--md-sys-color-primary)' : 'var(--md-sys-color-outline-variant)',
+                      color: theme === 'dark' ? 'var(--md-sys-color-on-primary-container)' : 'var(--md-sys-color-on-surface)',
+                    }}
+                    className="p-4 rounded-3xl border-2 text-left transition cursor-pointer flex flex-col justify-between shadow-xs active:scale-98"
+                  >
+                    <div className="flex items-center justify-between w-full mb-2">
+                      <div className="flex items-center gap-2 font-bold text-sm">
+                        <Moon className="h-5 w-5 text-purple-400" />
+                        <span>Dracula Dark</span>
+                      </div>
+                      {theme === 'dark' && <Check className="h-4 w-4 stroke-[3]" />}
+                    </div>
+                    <p className="text-xs opacity-80 leading-relaxed">
+                      Iconic Dracula palette with #282a36 background, #bd93f9 purple, and pastel highlights.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
               {/* Default View Layout */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+              <div className="space-y-2.5">
+                <label
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                  className="text-xs font-bold uppercase tracking-wider block"
+                >
                   Default View Layout
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {viewModes.map((vm) => {
                     const Icon = vm.icon;
                     const isSelected = preferences.defaultViewMode === vm.id;
@@ -243,20 +345,27 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                           updatePreferences({ defaultViewMode: vm.id });
                           setViewMode(vm.id);
                         }}
-                        className={`p-3 rounded-xl text-left border transition flex flex-col justify-between ${
-                          isSelected
-                            ? 'bg-amber-500/10 border-amber-500 text-white shadow-sm'
-                            : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
+                        style={{
+                          backgroundColor: isSelected
+                            ? 'var(--md-sys-color-primary-container)'
+                            : 'var(--md-sys-color-surface-container-low)',
+                          borderColor: isSelected
+                            ? 'var(--md-sys-color-primary)'
+                            : 'var(--md-sys-color-outline-variant)',
+                          color: isSelected
+                            ? 'var(--md-sys-color-on-primary-container)'
+                            : 'var(--md-sys-color-on-surface)',
+                        }}
+                        className="p-3.5 rounded-2xl text-left border transition flex flex-col justify-between shadow-xs active:scale-98 cursor-pointer"
                       >
                         <div className="flex items-center justify-between w-full mb-1">
                           <div className="flex items-center gap-2 font-bold text-xs">
-                            <Icon className={`h-3.5 w-3.5 ${isSelected ? 'text-amber-400' : 'text-slate-400'}`} />
+                            <Icon className="h-4 w-4" />
                             <span>{vm.label}</span>
                           </div>
-                          {isSelected && <Check className="h-3.5 w-3.5 text-amber-400" />}
+                          {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
                         </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">{vm.desc}</p>
+                        <p className="text-[11px] opacity-75 leading-relaxed">{vm.desc}</p>
                       </button>
                     );
                   })}
@@ -264,11 +373,14 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               </div>
 
               {/* Default Search Mode */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+              <div className="space-y-2.5">
+                <label
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                  className="text-xs font-bold uppercase tracking-wider block"
+                >
                   Default Add / Search Mode
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   {searchModes.map((sm) => {
                     const Icon = sm.icon;
                     const isSelected = preferences.defaultSearchMode === sm.id;
@@ -277,20 +389,27 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         key={sm.id}
                         type="button"
                         onClick={() => updatePreferences({ defaultSearchMode: sm.id })}
-                        className={`p-2.5 rounded-xl text-left border transition flex items-center justify-between ${
-                          isSelected
-                            ? 'bg-amber-500/10 border-amber-500 text-white'
-                            : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
+                        style={{
+                          backgroundColor: isSelected
+                            ? 'var(--md-sys-color-primary-container)'
+                            : 'var(--md-sys-color-surface-container-low)',
+                          borderColor: isSelected
+                            ? 'var(--md-sys-color-primary)'
+                            : 'var(--md-sys-color-outline-variant)',
+                          color: isSelected
+                            ? 'var(--md-sys-color-on-primary-container)'
+                            : 'var(--md-sys-color-on-surface)',
+                        }}
+                        className="p-3 rounded-2xl text-left border transition flex items-center justify-between shadow-xs active:scale-98 cursor-pointer"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <Icon className={`h-3.5 w-3.5 shrink-0 ${isSelected ? 'text-amber-400' : 'text-slate-400'}`} />
+                          <Icon className="h-4 w-4 shrink-0" />
                           <div className="truncate">
                             <div className="text-xs font-bold truncate">{sm.label}</div>
-                            <div className="text-[10px] text-slate-500 truncate">{sm.desc}</div>
+                            <div className="text-[10px] opacity-75 truncate">{sm.desc}</div>
                           </div>
                         </div>
-                        {isSelected && <Check className="h-3.5 w-3.5 text-amber-400 shrink-0 ml-1" />}
+                        {isSelected && <Check className="h-4 w-4 stroke-[3] shrink-0 ml-1" />}
                       </button>
                     );
                   })}
@@ -298,8 +417,11 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
               </div>
 
               {/* Default Startup View Filter */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+              <div className="space-y-2.5">
+                <label
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                  className="text-xs font-bold uppercase tracking-wider block"
+                >
                   Default Startup Filter
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -320,11 +442,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                         key={filterId}
                         type="button"
                         onClick={() => updatePreferences({ defaultViewFilter: filterId })}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
-                          isSelected
-                            ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm'
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                        }`}
+                        className={`md-chip ${isSelected ? 'md-chip-active shadow-sm' : ''}`}
                       >
                         {label}
                       </button>
@@ -342,21 +460,34 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
           {activeTab === 'watchlists' && (
             <div className="space-y-4">
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                <h4
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                  className="text-xs font-bold uppercase tracking-wider"
+                >
                   Tracked Watchlists
                 </h4>
-                <p className="text-[11px] text-slate-400">
-                  Authors, Series, and Narrators monitored for upcoming audiobook releases
+                <p
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                  className="text-[11px]"
+                >
+                  Authors, Series, and Narrators monitored for upcoming releases
                 </p>
               </div>
 
               {/* Add Watchlist Form */}
-              <form onSubmit={handleAddWatchlist} className="space-y-2 p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <form
+                onSubmit={handleAddWatchlist}
+                style={{
+                  backgroundColor: 'var(--md-sys-color-surface-container-low)',
+                  borderColor: 'var(--md-sys-color-outline-variant)',
+                }}
+                className="space-y-2.5 p-3.5 rounded-3xl border shadow-xs"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <select
                     value={wlType}
                     onChange={(e) => setWlType(e.target.value as any)}
-                    className="rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200"
+                    className="md-input min-h-[44px] px-3 text-xs font-bold rounded-2xl"
                   >
                     <option value="Author">Author</option>
                     <option value="Series">Series</option>
@@ -367,7 +498,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     placeholder="Target Name (e.g. Brandon Sanderson)"
                     value={wlName}
                     onChange={(e) => setWlName(e.target.value)}
-                    className="sm:col-span-2 rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500"
+                    className="md-input sm:col-span-2 min-h-[44px] px-3.5 text-xs font-medium rounded-2xl"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -376,60 +507,82 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     placeholder="Optional Audible URL or search keyword"
                     value={wlUrl}
                     onChange={(e) => setWlUrl(e.target.value)}
-                    className="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500"
+                    className="md-input flex-1 min-h-[44px] px-3.5 text-xs font-medium rounded-2xl"
                   />
                   <button
                     type="submit"
-                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0"
+                    className="md-btn-fab min-h-[44px] px-5 text-xs font-bold"
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-4 w-4 stroke-[2.5]" />
                     <span>Add</span>
                   </button>
                 </div>
               </form>
 
               {/* Watchlist Items List */}
-              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {watchlists.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-4">No watchlists configured.</p>
+                  <p
+                    style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                    className="text-xs text-center py-4"
+                  >
+                    No watchlists configured.
+                  </p>
                 ) : (
                   watchlists.map((w) => (
                     <div
                       key={w.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 text-xs"
+                      style={{
+                        backgroundColor: 'var(--md-sys-color-surface)',
+                        borderColor: 'var(--md-sys-color-outline-variant)',
+                      }}
+                      className="flex items-center justify-between p-3 rounded-2xl border text-xs shadow-xs"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                            w.type === 'Series'
-                              ? 'bg-purple-950 text-purple-300 border border-purple-800'
-                              : w.type === 'Author'
-                              ? 'bg-blue-950 text-blue-300 border border-blue-800'
-                              : 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                          }`}
+                          style={{
+                            backgroundColor:
+                              w.type === 'Series'
+                                ? 'var(--md-sys-color-primary-container)'
+                                : w.type === 'Author'
+                                ? 'var(--md-sys-color-secondary-container)'
+                                : 'var(--md-sys-color-accent-green-container)',
+                            color:
+                              w.type === 'Series'
+                                ? 'var(--md-sys-color-on-primary-container)'
+                                : w.type === 'Author'
+                                ? 'var(--md-sys-color-secondary)'
+                                : 'var(--md-sys-color-accent-green)',
+                          }}
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
                         >
                           {w.type}
                         </span>
-                        <span className="font-semibold text-slate-200 truncate">{w.name}</span>
+                        <span className="font-bold truncate">{w.name}</span>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {w.url && (
                           <a
                             href={w.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-slate-400 hover:text-amber-400 transition"
+                            style={{ color: 'var(--md-sys-color-primary)' }}
+                            className="p-1.5 rounded-lg hover:bg-[var(--md-sys-color-surface-container)] transition"
                           >
-                            <ExternalLink className="h-3.5 w-3.5" />
+                            <ExternalLink className="h-4 w-4" />
                           </a>
                         )}
                         <button
                           type="button"
                           onClick={() => removeWatchlistTarget(w.id)}
-                          className="text-slate-500 hover:text-rose-400 transition p-1 cursor-pointer"
+                          style={{
+                            backgroundColor: 'var(--md-sys-color-error-container)',
+                            color: 'var(--md-sys-color-error)',
+                          }}
+                          className="p-1.5 rounded-xl transition cursor-pointer active:scale-95 shadow-xs"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
@@ -443,20 +596,33 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
           {activeTab === 'mutelist' && (
             <div className="space-y-4">
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                <h4
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                  className="text-xs font-bold uppercase tracking-wider"
+                >
                   Mute Rules (Ignore List)
                 </h4>
-                <p className="text-[11px] text-slate-400">
+                <p
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                  className="text-[11px]"
+                >
                   Filter out spin-offs, non-English editions, or dramatized adaptations
                 </p>
               </div>
 
               {/* Add Mute Rule Form */}
-              <form onSubmit={handleAddMute} className="flex gap-2 p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <form
+                onSubmit={handleAddMute}
+                style={{
+                  backgroundColor: 'var(--md-sys-color-surface-container-low)',
+                  borderColor: 'var(--md-sys-color-outline-variant)',
+                }}
+                className="flex gap-2 p-3.5 rounded-3xl border shadow-xs"
+              >
                 <select
                   value={muteType}
                   onChange={(e) => setMuteType(e.target.value as any)}
-                  className="rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 shrink-0"
+                  className="md-input min-h-[44px] px-3 text-xs font-bold rounded-2xl shrink-0"
                 >
                   <option value="Series">Series</option>
                   <option value="Keyword">Keyword</option>
@@ -467,39 +633,63 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   placeholder="Phrase to ignore (e.g. Spanish Edition, GraphicAudio)"
                   value={muteVal}
                   onChange={(e) => setMuteVal(e.target.value)}
-                  className="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500"
+                  className="md-input flex-1 min-h-[44px] px-3.5 text-xs font-medium rounded-2xl"
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0"
+                  style={{
+                    backgroundColor: 'var(--md-sys-color-error)',
+                    color: '#ffffff',
+                  }}
+                  className="min-h-[44px] px-4 rounded-2xl font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0 shadow-sm active:scale-95"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
                   <span>Mute</span>
                 </button>
               </form>
 
               {/* Mute Items List */}
-              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {muteList.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-4">No mute rules configured.</p>
+                  <p
+                    style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                    className="text-xs text-center py-4"
+                  >
+                    No mute rules configured.
+                  </p>
                 ) : (
                   muteList.map((m) => (
                     <div
                       key={m.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 text-xs"
+                      style={{
+                        backgroundColor: 'var(--md-sys-color-surface)',
+                        borderColor: 'var(--md-sys-color-outline-variant)',
+                      }}
+                      className="flex items-center justify-between p-3 rounded-2xl border text-xs shadow-xs"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-950/80 text-rose-300 border border-rose-800">
+                        <span
+                          style={{
+                            backgroundColor: 'var(--md-sys-color-error-container)',
+                            color: 'var(--md-sys-color-error)',
+                            borderColor: 'var(--md-sys-color-error)',
+                          }}
+                          className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
+                        >
                           {m.type}
                         </span>
-                        <span className="font-semibold text-slate-200 truncate">{m.value}</span>
+                        <span className="font-bold truncate">{m.value}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => removeMuteRule(m.id)}
-                        className="text-slate-500 hover:text-rose-400 transition p-1 cursor-pointer shrink-0"
+                        style={{
+                          backgroundColor: 'var(--md-sys-color-error-container)',
+                          color: 'var(--md-sys-color-error)',
+                        }}
+                        className="p-1.5 rounded-xl transition cursor-pointer active:scale-95 shadow-xs"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   ))
@@ -512,70 +702,89 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
           {activeTab === 'notifications' && (
             <div className="space-y-4">
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                <h4
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                  className="text-xs font-bold uppercase tracking-wider"
+                >
                   Release Alerts &amp; Notifications
                 </h4>
-                <p className="text-[11px] text-slate-400">
-                  Configure browser and native push notifications for upcoming release dates
+                <p
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                  className="text-[11px]"
+                >
+                  Configure system push notifications for upcoming release dates
                 </p>
               </div>
 
-              <div className="space-y-3 p-4 rounded-xl bg-slate-950 border border-slate-800">
+              <div
+                style={{
+                  backgroundColor: 'var(--md-sys-color-surface-container-low)',
+                  borderColor: 'var(--md-sys-color-outline-variant)',
+                }}
+                className="space-y-4 p-5 rounded-3xl border shadow-xs"
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-white block">System Push Notifications</span>
-                    <span className="text-[10px] text-slate-400">Receive alerts when app is in the background</span>
+                    <span className="text-xs font-bold block">System Push Notifications</span>
+                    <span
+                      style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                      className="text-[11px]"
+                    >
+                      Receive notifications when the app is in background
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={requestSystemNotificationPermission}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition ${
-                      pushSettings.pushEnabled
-                        ? 'bg-emerald-500 text-slate-950 font-bold'
-                        : 'bg-amber-500 text-slate-950 font-bold'
-                    }`}
+                    style={{
+                      backgroundColor: pushSettings.pushEnabled
+                        ? 'var(--md-sys-color-accent-green)'
+                        : 'var(--md-sys-color-primary)',
+                      color: '#ffffff',
+                    }}
+                    className="min-h-[40px] px-4 rounded-full text-xs font-bold cursor-pointer transition shadow-xs active:scale-95"
                   >
-                    {pushSettings.pushEnabled ? 'Enabled' : 'Enable Notifications'}
+                    {pushSettings.pushEnabled ? 'Enabled' : 'Enable Alerts'}
                   </button>
                 </div>
 
-                <div className="h-px bg-slate-800" />
+                <div style={{ backgroundColor: 'var(--md-sys-color-outline-variant)' }} className="h-px" />
 
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-300 block">Default Reminder Intervals</span>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <div className="space-y-2.5">
+                  <span className="text-xs font-bold block">Default Reminder Intervals</span>
+                  <label className="flex items-center gap-2.5 text-xs font-medium cursor-pointer">
                     <input
                       type="checkbox"
                       checked={pushSettings.notifyOneWeek}
                       onChange={(e) => updatePushSettings({ notifyOneWeek: e.target.checked })}
-                      className="rounded accent-amber-500"
+                      className="rounded accent-[var(--md-sys-color-primary)] h-4 w-4"
                     />
                     <span>7 Days Before Release</span>
                   </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <label className="flex items-center gap-2.5 text-xs font-medium cursor-pointer">
                     <input
                       type="checkbox"
                       checked={pushSettings.notifyOneDay}
                       onChange={(e) => updatePushSettings({ notifyOneDay: e.target.checked })}
-                      className="rounded accent-amber-500"
+                      className="rounded accent-[var(--md-sys-color-primary)] h-4 w-4"
                     />
                     <span>24 Hours Before Release</span>
                   </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <label className="flex items-center gap-2.5 text-xs font-medium cursor-pointer">
                     <input
                       type="checkbox"
                       checked={pushSettings.notifyDayOf}
                       onChange={(e) => updatePushSettings({ notifyDayOf: e.target.checked })}
-                      className="rounded accent-amber-500"
+                      className="rounded accent-[var(--md-sys-color-primary)] h-4 w-4"
                     />
                     <span>Day of Release Morning Alert</span>
                   </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <label className="flex items-center gap-2.5 text-xs font-medium cursor-pointer">
                     <input
                       type="checkbox"
                       checked={pushSettings.soundEnabled}
                       onChange={(e) => updatePushSettings({ soundEnabled: e.target.checked })}
-                      className="rounded accent-amber-500"
+                      className="rounded accent-[var(--md-sys-color-primary)] h-4 w-4"
                     />
                     <span>Play Audio Chime on Alert</span>
                   </label>
@@ -586,10 +795,16 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-800 bg-slate-950 flex justify-end shrink-0">
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container-low)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="p-3.5 sm:p-4 border-t flex justify-end shrink-0"
+        >
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold cursor-pointer transition"
+            className="md-btn-fab min-h-[44px] px-6 text-xs font-bold"
           >
             Done
           </button>

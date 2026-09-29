@@ -95,7 +95,6 @@ export const ExportImportTab: React.FC = () => {
     }
 
     importBackup(validationResult.data, importMode);
-    // Clear inputs
     setRawJsonInput('');
     setValidationResult(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -119,111 +118,172 @@ export const ExportImportTab: React.FC = () => {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+            <h4
+              style={{ color: 'var(--md-sys-color-primary)' }}
+              className="text-xs font-bold uppercase tracking-wider"
+            >
               Export &amp; Backup
             </h4>
-            <p className="text-[11px] text-slate-400">
+            <p
+              style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+              className="text-[11px]"
+            >
               Save your library, watchlists, reading history, and mute filters
             </p>
           </div>
-          <span className="text-[11px] font-medium text-slate-400">
+          <span
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            className="text-xs font-semibold tabular-nums"
+          >
             {books.length} books tracked
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* JSON Full Backup */}
           <button
             onClick={() => exportBackup('json')}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 transition cursor-pointer group text-center"
+            style={{
+              backgroundColor: 'var(--md-sys-color-surface-container)',
+              borderColor: 'var(--md-sys-color-outline-variant)',
+            }}
+            className="flex flex-col items-center justify-center p-4 rounded-3xl border hover:border-[var(--md-sys-color-primary)] transition cursor-pointer group text-center shadow-xs active:scale-95"
           >
-            <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-              <FileJson className="h-4 w-4" />
+            <div
+              style={{
+                backgroundColor: 'var(--md-sys-color-primary-container)',
+                color: 'var(--md-sys-color-on-primary-container)',
+              }}
+              className="h-10 w-10 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-xs"
+            >
+              <FileJson className="h-5 w-5" />
             </div>
-            <span className="text-xs font-bold text-white mb-0.5">Backup JSON</span>
-            <span className="text-[10px] text-slate-500">Complete database snapshot</span>
+            <span className="text-xs font-bold mb-0.5">Backup JSON</span>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }} className="text-[10px]">
+              Complete library snapshot
+            </span>
           </button>
 
           {/* CSV Spreadsheet */}
           <button
             onClick={() => exportBackup('csv')}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 transition cursor-pointer group text-center"
+            style={{
+              backgroundColor: 'var(--md-sys-color-surface-container)',
+              borderColor: 'var(--md-sys-color-outline-variant)',
+            }}
+            className="flex flex-col items-center justify-center p-4 rounded-3xl border hover:border-[var(--md-sys-color-accent-green)] transition cursor-pointer group text-center shadow-xs active:scale-95"
           >
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-              <FileSpreadsheet className="h-4 w-4" />
+            <div
+              style={{
+                backgroundColor: 'var(--md-sys-color-accent-green-container)',
+                color: 'var(--md-sys-color-accent-green)',
+              }}
+              className="h-10 w-10 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-xs"
+            >
+              <FileSpreadsheet className="h-5 w-5" />
             </div>
-            <span className="text-xs font-bold text-white mb-0.5">Export CSV</span>
-            <span className="text-[10px] text-slate-500">For Excel &amp; Google Sheets</span>
+            <span className="text-xs font-bold mb-0.5">Export CSV</span>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }} className="text-[10px]">
+              For Excel &amp; Spreadsheets
+            </span>
           </button>
 
           {/* Copy JSON */}
           <button
             onClick={handleCopyJson}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800 hover:border-sky-500/50 transition cursor-pointer group text-center"
+            style={{
+              backgroundColor: 'var(--md-sys-color-surface-container)',
+              borderColor: 'var(--md-sys-color-outline-variant)',
+            }}
+            className="flex flex-col items-center justify-center p-4 rounded-3xl border hover:border-[var(--md-sys-color-secondary)] transition cursor-pointer group text-center shadow-xs active:scale-95"
           >
-            <div className="h-8 w-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-              {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+            <div
+              style={{
+                backgroundColor: 'var(--md-sys-color-secondary-container)',
+                color: 'var(--md-sys-color-secondary)',
+              }}
+              className="h-10 w-10 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-xs"
+            >
+              {copied ? <Check className="h-5 w-5 stroke-[2.5]" /> : <Copy className="h-5 w-5" />}
             </div>
-            <span className="text-xs font-bold text-white mb-0.5">
+            <span className="text-xs font-bold mb-0.5">
               {copied ? 'Copied!' : 'Copy to Clipboard'}
             </span>
-            <span className="text-[10px] text-slate-500">Instant JSON string copy</span>
+            <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }} className="text-[10px]">
+              Raw JSON text copy
+            </span>
           </button>
         </div>
       </div>
 
-      <div className="h-px bg-slate-800" />
+      <div style={{ backgroundColor: 'var(--md-sys-color-outline-variant)' }} className="h-px" />
 
       {/* 2. Import Section */}
       <div className="space-y-4">
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+          <h4
+            style={{ color: 'var(--md-sys-color-primary)' }}
+            className="text-xs font-bold uppercase tracking-wider"
+          >
             Import &amp; Restore
           </h4>
-          <p className="text-[11px] text-slate-400">
+          <p
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            className="text-[11px]"
+          >
             Restore from a previous backup file or paste a JSON string
           </p>
         </div>
 
         {/* Import Mode Selector: Merge vs Replace */}
-        <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800">
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="flex items-center gap-2 p-1.5 rounded-2xl border"
+        >
           <button
             type="button"
             onClick={() => setImportMode('merge')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              importMode === 'merge'
-                ? 'bg-amber-500 text-slate-950 font-bold shadow'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            style={{
+              backgroundColor: importMode === 'merge' ? 'var(--md-sys-color-primary)' : 'transparent',
+              color: importMode === 'merge' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
           >
-            <Layers className="h-3.5 w-3.5" />
+            <Layers className="h-4 w-4" />
             <span>Merge with Current</span>
           </button>
 
           <button
             type="button"
             onClick={() => setImportMode('replace')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              importMode === 'replace'
-                ? 'bg-rose-500 text-white font-bold shadow'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            style={{
+              backgroundColor: importMode === 'replace' ? 'var(--md-sys-color-error)' : 'transparent',
+              color: importMode === 'replace' ? '#ffffff' : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw className="h-4 w-4" />
             <span>Replace / Overwrite</span>
           </button>
         </div>
 
-        <p className="text-[10px] text-slate-500 italic">
+        <p style={{ color: 'var(--md-sys-color-on-surface-variant)' }} className="text-xs italic">
           {importMode === 'merge'
-            ? '• Merge: Keeps existing books, updates existing metadata, and adds newly found books and watchlists.'
-            : '• Replace: Erases the current library and restores the exact database from the backup file.'}
+            ? '• Merge: Preserves your downloaded/listened states and adds any new books or watchlists.'
+            : '• Replace: Erases the current database and restores exactly what is stored inside the backup file.'}
         </p>
 
         {/* File Upload Zone */}
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="p-5 rounded-2xl border-2 border-dashed border-slate-700 hover:border-amber-400/70 bg-slate-950/60 hover:bg-slate-950/90 transition flex flex-col items-center justify-center text-center cursor-pointer group"
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container-low)',
+            borderColor: 'var(--md-sys-color-outline)',
+          }}
+          className="p-6 rounded-3xl border-2 border-dashed hover:border-[var(--md-sys-color-primary)] transition flex flex-col items-center justify-center text-center cursor-pointer group shadow-xs"
         >
           <input
             ref={fileInputRef}
@@ -232,11 +292,19 @@ export const ExportImportTab: React.FC = () => {
             onChange={handleFileChange}
             className="hidden"
           />
-          <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-            <Upload className="h-5 w-5" />
+          <div
+            style={{
+              backgroundColor: 'var(--md-sys-color-primary-container)',
+              color: 'var(--md-sys-color-primary)',
+            }}
+            className="h-12 w-12 rounded-2xl flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform shadow-xs"
+          >
+            <Upload className="h-6 w-6" />
           </div>
-          <span className="text-xs font-bold text-white">Choose Backup File (.json)</span>
-          <span className="text-[11px] text-slate-400 mt-0.5">Click or drag &amp; drop file here</span>
+          <span className="text-xs font-bold">Choose Backup File (.json)</span>
+          <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }} className="text-[11px] mt-0.5">
+            Click or drag &amp; drop file here
+          </span>
         </div>
 
         {/* Toggle Paste Box */}
@@ -244,7 +312,8 @@ export const ExportImportTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowPasteBox(!showPasteBox)}
-            className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold cursor-pointer underline"
+            style={{ color: 'var(--md-sys-color-primary)' }}
+            className="text-xs font-bold cursor-pointer underline"
           >
             {showPasteBox ? 'Hide Paste Box' : 'Or Paste Raw JSON String'}
           </button>
@@ -257,7 +326,7 @@ export const ExportImportTab: React.FC = () => {
               onChange={(e) => handleInspectPastedText(e.target.value)}
               placeholder="Paste backup JSON string here..."
               rows={4}
-              className="w-full rounded-xl bg-slate-950 border border-slate-800 p-2.5 text-xs text-slate-200 font-mono focus:border-amber-400 focus:outline-none"
+              className="md-input w-full p-3 text-xs font-mono rounded-2xl"
             />
           </div>
         )}
@@ -265,39 +334,50 @@ export const ExportImportTab: React.FC = () => {
         {/* Validation Result Box */}
         {validationResult && (
           <div
-            className={`p-3 rounded-xl border text-xs ${
-              validationResult.valid
-                ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
-                : 'bg-rose-950/40 border-rose-500/50 text-rose-200'
-            }`}
+            style={{
+              backgroundColor: validationResult.valid
+                ? 'var(--md-sys-color-accent-green-container)'
+                : 'var(--md-sys-color-error-container)',
+              borderColor: validationResult.valid
+                ? 'var(--md-sys-color-accent-green)'
+                : 'var(--md-sys-color-error)',
+              color: validationResult.valid
+                ? 'var(--md-sys-color-accent-green)'
+                : 'var(--md-sys-color-error)',
+            }}
+            className="p-4 rounded-3xl border text-xs shadow-sm space-y-2.5"
           >
             {validationResult.valid ? (
               <div className="space-y-2">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-300">
+                <div className="flex items-center gap-2 font-bold text-sm">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
                   <span>Valid Backup Detected</span>
                 </div>
-                <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
-                  <span className="px-2 py-0.5 rounded bg-emerald-900/50 border border-emerald-700/50">
+                <div className="flex flex-wrap gap-2 text-xs font-bold">
+                  <span className="px-2.5 py-1 rounded-full bg-black/10">
                     <strong>{validationResult.summary?.booksCount}</strong> Audiobooks
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-900/50 border border-emerald-700/50">
+                  <span className="px-2.5 py-1 rounded-full bg-black/10">
                     <strong>{validationResult.summary?.watchlistsCount}</strong> Watchlists
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-900/50 border border-emerald-700/50">
+                  <span className="px-2.5 py-1 rounded-full bg-black/10">
                     <strong>{validationResult.summary?.muteRulesCount}</strong> Mute Rules
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={handleExecuteImport}
-                  className="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer mt-1"
+                  style={{
+                    backgroundColor: 'var(--md-sys-color-accent-green)',
+                    color: '#ffffff',
+                  }}
+                  className="w-full py-2.5 rounded-2xl font-bold text-xs shadow-md transition cursor-pointer active:scale-98 mt-2"
                 >
                   Confirm &amp; Import Now ({importMode === 'merge' ? 'Merge' : 'Replace'})
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-rose-300">
+              <div className="flex items-center gap-2 font-bold">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{validationResult.error}</span>
               </div>
@@ -306,18 +386,24 @@ export const ExportImportTab: React.FC = () => {
         )}
       </div>
 
-      <div className="h-px bg-slate-800" />
+      <div style={{ backgroundColor: 'var(--md-sys-color-outline-variant)' }} className="h-px" />
 
       {/* 3. Reset Option */}
       <div className="flex items-center justify-between pt-1">
         <div>
-          <span className="text-xs font-semibold text-slate-300">Reset Library</span>
-          <p className="text-[10px] text-slate-500">Restore factory sample catalog</p>
+          <span className="text-xs font-bold">Reset Library</span>
+          <p style={{ color: 'var(--md-sys-color-on-surface-variant)' }} className="text-[11px]">
+            Restore default sample catalog
+          </p>
         </div>
         <button
           type="button"
           onClick={handleResetCatalog}
-          className="px-2.5 py-1 rounded-lg border border-slate-800 hover:border-rose-700/60 bg-slate-950 text-slate-400 hover:text-rose-400 text-[11px] font-semibold transition cursor-pointer"
+          style={{
+            borderColor: 'var(--md-sys-color-outline-variant)',
+            color: 'var(--md-sys-color-error)',
+          }}
+          className="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition hover:bg-[var(--md-sys-color-error-container)] cursor-pointer"
         >
           Reset to Factory
         </button>

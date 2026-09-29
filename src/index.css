@@ -1,28 +1,285 @@
 @import "tailwindcss";
 
 @layer base {
-  :root {
-    --font-display: 'Syne', sans-serif;
-    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --safe-top: env(safe-area-inset-top, 0px);
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-left: env(safe-area-inset-left, 0px);
-    --safe-right: env(safe-area-inset-right, 0px);
+  /* =========================================================================
+     ALUCARD (LIGHT MODE) - DEFAULT THEME
+     Official Canonical Dracula Light Counterpart (Alucard) + Material Design 3
+     ========================================================================= */
+  :root,
+  [data-theme="alucard"] {
+    /* Canvas & Surfaces */
+    --md-sys-color-background: #f8f8f2;           /* Alucard Canvas Cream */
+    --md-sys-color-surface: #ffffff;              /* Crisp White Elevated Cards */
+    --md-sys-color-surface-dim: #f0eee4;
+    --md-sys-color-surface-container-lowest: #ffffff;
+    --md-sys-color-surface-container-low: #f5f4eb;
+    --md-sys-color-surface-container: #ebe8dc;
+    --md-sys-color-surface-container-high: #e2ded0;
+    --md-sys-color-surface-container-highest: #d7d2c3;
+
+    /* Text & Content (High WCAG AA Contrast) */
+    --md-sys-color-on-surface: #282a36;           /* Dracula Deep Navy-Charcoal */
+    --md-sys-color-on-surface-variant: #596585;   /* Dracula Comment Slate (5.4:1 contrast) */
+    --md-sys-color-outline: #c4c0b2;
+    --md-sys-color-outline-variant: #dfdbcf;
+
+    /* Primary Accent: Alucard Purple */
+    --md-sys-color-primary: #7b3fe4;              /* Vibrant Purple */
+    --md-sys-color-primary-hover: #6a2dd6;
+    --md-sys-color-on-primary: #ffffff;
+    --md-sys-color-primary-container: #ede4fc;
+    --md-sys-color-on-primary-container: #37117f;
+
+    /* Secondary Accent: Alucard Cyan / Teal */
+    --md-sys-color-secondary: #0087a2;
+    --md-sys-color-on-secondary: #ffffff;
+    --md-sys-color-secondary-container: #d9f3f8;
+    --md-sys-color-on-secondary-container: #003a47;
+
+    /* Semantic Accents */
+    --md-sys-color-accent-green: #15803d;
+    --md-sys-color-accent-green-container: #dcfce7;
+    --md-sys-color-accent-orange: #c85a00;
+    --md-sys-color-accent-orange-container: #ffeed8;
+    --md-sys-color-accent-yellow: #a16207;
+    --md-sys-color-accent-yellow-container: #fef9c3;
+    --md-sys-color-accent-pink: #b81e85;
+    --md-sys-color-accent-pink-container: #fce7f3;
+    --md-sys-color-error: #dc2626;
+    --md-sys-color-error-container: #fee2e2;
+
+    /* Material 3 Elevations & Ambient Tonal Shadows */
+    --md-elevation-1: 0 1px 3px 0 rgba(40, 42, 54, 0.08), 0 1px 2px -1px rgba(40, 42, 54, 0.05);
+    --md-elevation-2: 0 4px 10px -1px rgba(40, 42, 54, 0.1), 0 2px 4px -2px rgba(40, 42, 54, 0.06);
+    --md-elevation-3: 0 12px 24px -4px rgba(40, 42, 54, 0.12), 0 4px 8px -4px rgba(40, 42, 54, 0.08);
+
+    color-scheme: light;
   }
-  
+
+  /* =========================================================================
+     DRACULA (DARK MODE)
+     Official Canonical Dracula Dark Palette + Material Design 3
+     ========================================================================= */
+  .dark,
+  [data-theme="dracula"] {
+    /* Canvas & Surfaces */
+    --md-sys-color-background: #282a36;           /* Dracula Base */
+    --md-sys-color-surface: #21222c;              /* Dracula Darker Surface */
+    --md-sys-color-surface-dim: #191a21;
+    --md-sys-color-surface-container-lowest: #1c1d26;
+    --md-sys-color-surface-container-low: #242631;
+    --md-sys-color-surface-container: #2e313f;     /* Dracula Container */
+    --md-sys-color-surface-container-high: #3d4154;/* Dracula Elevated */
+    --md-sys-color-surface-container-highest: #494e63;
+
+    /* Text & Content */
+    --md-sys-color-on-surface: #f8f8f2;           /* Dracula Foreground */
+    --md-sys-color-on-surface-variant: #9ea9cc;   /* Brightened Comment */
+    --md-sys-color-outline: #6272a4;              /* Dracula Comment */
+    --md-sys-color-outline-variant: #44475a;      /* Dracula Current Line */
+
+    /* Primary Accent: Dracula Purple */
+    --md-sys-color-primary: #bd93f9;
+    --md-sys-color-primary-hover: #caa8fb;
+    --md-sys-color-on-primary: #21222c;
+    --md-sys-color-primary-container: #483965;
+    --md-sys-color-on-primary-container: #f8f8f2;
+
+    /* Secondary Accent: Dracula Cyan */
+    --md-sys-color-secondary: #8be9fd;
+    --md-sys-color-on-secondary: #21222c;
+    --md-sys-color-secondary-container: #224d57;
+    --md-sys-color-on-secondary-container: #8be9fd;
+
+    /* Semantic Accents */
+    --md-sys-color-accent-green: #50fa7b;
+    --md-sys-color-accent-green-container: #1b4b2c;
+    --md-sys-color-accent-orange: #ffb86c;
+    --md-sys-color-accent-orange-container: #5c3b1e;
+    --md-sys-color-accent-yellow: #f1fa8c;
+    --md-sys-color-accent-yellow-container: #4a4a1d;
+    --md-sys-color-accent-pink: #ff79c6;
+    --md-sys-color-accent-pink-container: #5e2246;
+    --md-sys-color-error: #ff5555;
+    --md-sys-color-error-container: #5c1e1e;
+
+    /* Material 3 Elevations & Deep Ambient Shadows */
+    --md-elevation-1: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+    --md-elevation-2: 0 4px 12px -1px rgba(0, 0, 0, 0.5), 0 2px 5px -2px rgba(0, 0, 0, 0.4);
+    --md-elevation-3: 0 14px 30px -4px rgba(0, 0, 0, 0.65), 0 6px 10px -4px rgba(0, 0, 0, 0.45);
+
+    color-scheme: dark;
+  }
+
   body {
-    font-family: var(--font-sans);
+    background-color: var(--md-sys-color-background);
+    color: var(--md-sys-color-on-surface);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     overscroll-behavior-y: none;
+    transition: background-color 0.25s cubic-bezier(0.2, 0, 0, 1), color 0.25s cubic-bezier(0.2, 0, 0, 1);
   }
-  
-  h1, h2, h3, .font-display {
-    font-family: var(--font-display);
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Syne', sans-serif;
+  }
+
+  ::selection {
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
   }
 }
 
-/* Custom scrollbar for mobile / desktop */
+/* =========================================================================
+   MATERIAL DESIGN 3 CORE UTILITIES & COMPONENTS
+   ========================================================================= */
+
+/* Surface Cards */
+.md-card {
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 1.5rem;
+  box-shadow: var(--md-elevation-1);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1),
+              border-color 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.md-card:hover {
+  box-shadow: var(--md-elevation-2);
+  border-color: var(--md-sys-color-outline);
+}
+
+/* Material Dialog / Modal Container */
+.md-dialog {
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 1.75rem;
+  box-shadow: var(--md-elevation-3);
+}
+
+/* Extended Floating Action Button (FAB) */
+.md-btn-fab {
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-radius: 1.125rem;
+  box-shadow: var(--md-elevation-2);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 0.15s cubic-bezier(0.2, 0, 0, 1),
+              background-color 0.15s ease;
+  cursor: pointer;
+}
+
+.md-btn-fab:hover {
+  background-color: var(--md-sys-color-primary-hover);
+  box-shadow: var(--md-elevation-3);
+  transform: translateY(-1px);
+}
+
+.md-btn-fab:active {
+  transform: scale(0.96);
+}
+
+/* Tonal Button */
+.md-btn-tonal {
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border-radius: 1rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.md-btn-tonal:hover {
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.md-btn-tonal:active {
+  transform: scale(0.97);
+}
+
+/* Material Icon Button (Touch-target $\ge$ 44px) */
+.md-btn-icon {
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-sys-color-on-surface);
+  background-color: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  transition: background-color 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.md-btn-icon:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+  border-color: var(--md-sys-color-outline);
+}
+
+.md-btn-icon:active {
+  transform: scale(0.94);
+}
+
+/* Material 3 Filter / Assist Chips */
+.md-chip {
+  min-height: 38px;
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background-color: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.md-chip:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border-color: var(--md-sys-color-outline);
+}
+
+.md-chip-active {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: var(--md-sys-color-primary);
+  font-weight: 700;
+  box-shadow: var(--md-elevation-1);
+}
+
+/* Material 3 Inputs */
+.md-input {
+  background-color: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.md-input:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 3px var(--md-sys-color-primary-container);
+  background-color: var(--md-sys-color-surface);
+}
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -33,14 +290,16 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: var(--md-sys-color-outline);
   border-radius: 9999px;
+  opacity: 0.35;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+  background: var(--md-sys-color-primary);
 }
 
+/* Safe area padding utilities */
 .pt-safe {
   padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
 }

@@ -1,331 +1,615 @@
 import React, { useState } from 'react';
 import { useTracker } from '../context/TrackerContext';
 import { fetchAudibleApiMetadata, isEnglishAudiobook, isMuted, getASIN } from '../services/audibleApiService';
-import { X, Plus, Sparkles, Loader2, ArrowRight, Layers, User, Mic, BookOpen } from 'lucide-react';
+import {
+  X,
+  Plus,
+  Sparkles,
+  Loader2,
+  CheckCircle2,
+  BookOpen,
+  Layers,
+  User,
+  Mic,
+  Calendar,
+  AlertCircle,
+} from 'lucide-react';
 import { parseAudibleUrl } from '../utils/audibleParser';
+import { Genre, Audiobook } from '../types/audiobook';
 
 interface AddBookDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const SAMPLE_URLS = [
-  { label: 'Wind and Truth (Book)', url: 'https://www.audible.com/pd/Wind-and-Truth-Audiobook/B0D5B7L9K3' },
-  { label: 'Brandon Sanderson (Author)', url: 'https://www.audible.com/author/Brandon-Sanderson/B001IGFHW6' },
-  { label: 'Dungeon Crawler Carl (Series)', url: 'https://www.audible.com/series/Dungeon-Crawler-Carl-Audiobooks/B08V81GY52' },
-  { label: 'Jeff Hays (Narrator)', url: 'https://www.audible.com/narrator/Jeff-Hays/B00TGB8A1S' },
+const SAMPLE_QUERIES = [
+  'Wind and Truth',
+  'Dungeon Crawler Carl',
+  'Bobiverse',
+  'Project Hail Mary',
+  'Brandon Sanderson',
 ];
 
 export const AddBookDialog: React.FC<AddBookDialogProps> = ({ isOpen, onClose }) => {
-  const { addBook, books, muteList, addWatchlistTarget, preferences, scanSingleTarget } = useTracker();
+  const {
+    addBook,
+    books,
+    muteList,
+    addWatchlistTarget,
+    scanSingleTarget,
+    languageFilter,
+    showToast,
+  } = useTracker();
 
-  const [inputUrl, setInputUrl] = useState('');
-  const [targetType, setTargetType] = useState<'Title' | 'Series' | 'Author' | 'Narrator'>(
-    preferences?.defaultSearchMode || 'Title'
-  );
-  const [statusText, setStatusText] = useState("Paste link or enter search term, then click 'Fetch & Add'.");
-  const [isLoading, setIsLoading] = useState(false);
+  // Mode: 'search' | 'manual'
+  const [activeTab, setActiveTab] = useState<'search' | 'manual'>('search');
+
+  // Search tab state
+  const [queryInput, setQueryInput] = useState('');
+  const [searchTargetType, setSearchTargetType] = useState<'Book' | 'Series' | 'Author' | 'Narrator'>('Book');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResult, setSearchResult] = useState<any | null>(null);
+  const [fallbackTriggered, setFallbackTriggered] = useState(false);
+
+  // Manual entry tab state
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualAuthor, setManualAuthor] = useState('');
+  const [manualSeries, setManualSeries] = useState('');
+  const [manualBookNumber, setManualBookNumber] = useState('');
+  const [manualNarrator, setManualNarrator] = useState('');
+  const [manualDate, setManualDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [manualGenre, setManualGenre] = useState<Genre>('Sci-Fi');
+  const [manualCover, setManualCover] = useState('');
 
   if (!isOpen) return null;
 
-  const handleFetchAndAdd = async () => {
-    const raw = inputUrl.trim();
+  // Handle Search / Link fetch
+  const handleSearchOrAdd = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const raw = queryInput.trim();
     if (!raw) {
-      alert('Please enter an Audible URL or search query.');
+      showToast('Please enter a title, author, or link.', 'info');
       return;
     }
 
-    setIsLoading(true);
+    setIsSearching(true);
+    setSearchResult(null);
+    setFallbackTriggered(false);
 
     try {
-      // 1. Explicit Series URL or Mode
-      if (raw.includes('/series/') || targetType === 'Series') {
-        setStatusText('Scanning series catalog and upcoming sequels...');
+      // 1. If user chose Series
+      if (searchTargetType === 'Series' || raw.includes('/series/')) {
         const parsed = parseAudibleUrl(raw);
         const seriesName = parsed.extractedName || raw.replace(/https?:\/\/[^\s]+/g, '').trim() || raw;
-        
-        const newTarget = {
+        const target = {
           id: `w-series-${Date.now()}`,
           type: 'Series' as const,
           name: seriesName,
           url: raw.startsWith('http') ? raw : `https://www.audible.com/search?keywords=${encodeURIComponent(seriesName)}`,
         };
-        addWatchlistTarget(newTarget);
-        const imported = await scanSingleTarget(newTarget);
-        setStatusText(`Tracked Series "${seriesName}"! Imported ${imported} release(s).`);
-        setTimeout(() => onClose(), 1500);
+        addWatchlistTarget(target);
+        const imported = await scanSingleTarget(target);
+        showToast(`Tracked series "${seriesName}" (${imported} releases found)`, 'success');
+        onClose();
         return;
       }
 
-      // 2. Explicit Author URL or Mode
-      if (raw.includes('/author/') || targetType === 'Author') {
-        setStatusText('Scanning author catalog for upcoming releases...');
+      // 2. If user chose Author
+      if (searchTargetType === 'Author' || raw.includes('/author/')) {
         const parsed = parseAudibleUrl(raw);
         const authorName = parsed.extractedName || raw.replace(/https?:\/\/[^\s]+/g, '').trim() || raw;
-        
-        const newTarget = {
+        const target = {
           id: `w-author-${Date.now()}`,
           type: 'Author' as const,
           name: authorName,
           url: raw.startsWith('http') ? raw : `https://www.audible.com/search?searchAuthor=${encodeURIComponent(authorName)}`,
         };
-        addWatchlistTarget(newTarget);
-        const imported = await scanSingleTarget(newTarget);
-        setStatusText(`Tracked Author "${authorName}"! Imported ${imported} release(s).`);
-        setTimeout(() => onClose(), 1500);
+        addWatchlistTarget(target);
+        const imported = await scanSingleTarget(target);
+        showToast(`Tracked author "${authorName}" (${imported} releases found)`, 'success');
+        onClose();
         return;
       }
 
-      // 3. Explicit Narrator URL or Mode
-      if (raw.includes('/narrator/') || raw.includes('searchNarrator=') || targetType === 'Narrator') {
-        setStatusText('Scanning narrator catalog for upcoming releases...');
+      // 3. If user chose Narrator
+      if (searchTargetType === 'Narrator' || raw.includes('/narrator/')) {
         const parsed = parseAudibleUrl(raw);
         const narratorName = parsed.extractedName || raw.replace(/https?:\/\/[^\s]+/g, '').trim() || raw;
-        
-        const newTarget = {
+        const target = {
           id: `w-narrator-${Date.now()}`,
           type: 'Narrator' as const,
           name: narratorName,
           url: raw.startsWith('http') ? raw : `https://www.audible.com/search?searchNarrator=${encodeURIComponent(narratorName)}`,
         };
-        addWatchlistTarget(newTarget);
-        const imported = await scanSingleTarget(newTarget);
-        setStatusText(`Tracked Narrator "${narratorName}"! Imported ${imported} release(s).`);
-        setTimeout(() => onClose(), 1500);
-        return;
-      }
-
-      // 4. Query Audible API for Book
-      setStatusText('Querying Audible live API...');
-      const metadata = await fetchAudibleApiMetadata(raw);
-
-      if (!metadata) {
-        setStatusText('Failed to extract details. Verify the URL or search term.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Language check (from AHK)
-      if (!isEnglishAudiobook(metadata.language, metadata.title)) {
-        if (!window.confirm(`This audiobook appears to be in '${metadata.language}', not English.\n\nDo you still want to track it?`)) {
-          setStatusText('Import cancelled (Non-English edition).');
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Mute check (from AHK)
-      if (isMuted(metadata.seriesName, metadata.title, metadata.author, muteList)) {
-        alert('This title matches an active rule in your Mute List and was ignored.');
+        addWatchlistTarget(target);
+        const imported = await scanSingleTarget(target);
+        showToast(`Tracked narrator "${narratorName}" (${imported} releases found)`, 'success');
         onClose();
         return;
       }
 
-      const asin = getASIN(raw);
-      const cleanUrl = asin ? `https://www.audible.com/pd/${asin}` : raw;
-
-      addBook({
-        id: `ab-api-${asin || Date.now()}`,
-        title: metadata.title,
-        seriesName: metadata.seriesName,
-        seriesUrl: metadata.seriesUrl,
-        series: metadata.seriesName !== '—' ? { name: metadata.seriesName, bookNumber: metadata.seriesSequence } : undefined,
-        author: metadata.author,
-        authorUrl: metadata.authorUrl,
-        narrator: metadata.narrator,
-        narrators: metadata.narrator.split(', ').filter(Boolean),
-        releaseDate: metadata.releaseDate,
-        coverUrl: metadata.coverUrl,
-        genre: metadata.genre || 'Sci-Fi',
-        runtimeHours: metadata.runtimeHours || 12,
-        audibleRating: metadata.rating || 4.8,
-        ratingCount: metadata.ratingCount || 1200,
-        synopsis: metadata.synopsis || `Audible audio edition of "${metadata.title}" by ${metadata.author}.`,
-        audibleUrl: cleanUrl,
-        url: cleanUrl,
-        downloaded: 'No',
-        listened: 'No',
-        isRead: false,
-        reminders: {
-          oneWeekBefore: true,
-          oneDayBefore: true,
-          dayOfRelease: true,
-        },
-      });
-
-      setStatusText(`Added "${metadata.title}"!`);
-      setTimeout(() => onClose(), 1000);
+      // 4. Book search via Audible API
+      const metadata = await fetchAudibleApiMetadata(raw);
+      if (metadata) {
+        setSearchResult(metadata);
+      } else {
+        // If API returns no match, trigger graceful fallback so user can still add it immediately!
+        setFallbackTriggered(true);
+      }
     } catch {
-      setStatusText('Error connecting to Audible API. Please verify the URL.');
+      setFallbackTriggered(true);
     } finally {
-      setIsLoading(false);
+      setIsSearching(false);
     }
   };
 
+  // Add the discovered book from API result
+  const handleConfirmAddResult = () => {
+    if (!searchResult) return;
+
+    const asin = searchResult.asin || getASIN(queryInput) || `asin-${Date.now()}`;
+    const newBook: Audiobook = {
+      id: `ab-api-${asin}`,
+      title: searchResult.title,
+      author: searchResult.author,
+      authorUrl: searchResult.authorUrl,
+      seriesName: searchResult.seriesName,
+      seriesUrl: searchResult.seriesUrl,
+      series:
+        searchResult.seriesName !== '—'
+          ? { name: searchResult.seriesName, bookNumber: searchResult.seriesSequence }
+          : undefined,
+      narrator: searchResult.narrator,
+      narrators: searchResult.narrator ? searchResult.narrator.split(', ').filter(Boolean) : ['Audible Narrator'],
+      releaseDate: searchResult.releaseDate || new Date().toISOString().split('T')[0],
+      coverUrl:
+        searchResult.coverUrl ||
+        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600',
+      genre: (searchResult.genre as Genre) || 'Sci-Fi',
+      runtimeHours: searchResult.runtimeHours || 12,
+      audibleRating: searchResult.rating || 4.7,
+      ratingCount: searchResult.ratingCount || 1000,
+      synopsis: searchResult.synopsis || 'Added from Audible catalog search.',
+      audibleUrl: searchResult.audibleUrl || (asin ? `https://www.audible.com/pd/${asin}` : ''),
+      url: searchResult.audibleUrl || (asin ? `https://www.audible.com/pd/${asin}` : ''),
+      isRead: false,
+      downloaded: 'No',
+      listened: 'No',
+      reminders: { oneWeekBefore: true, oneDayBefore: true, dayOfRelease: true },
+    };
+
+    addBook(newBook);
+    showToast(`Added "${newBook.title}" to library!`, 'success');
+    onClose();
+  };
+
+  // Direct Add Fallback (Never fails!)
+  const handleDirectAddFallback = () => {
+    const raw = queryInput.trim();
+    const newBook: Audiobook = {
+      id: `ab-custom-${Date.now()}`,
+      title: raw || 'Custom Audiobook',
+      author: 'Tracked Author',
+      seriesName: '—',
+      narrator: 'Narrator',
+      narrators: ['Narrator'],
+      releaseDate: new Date().toISOString().split('T')[0],
+      coverUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600',
+      genre: 'Sci-Fi',
+      runtimeHours: 10,
+      audibleRating: 4.8,
+      ratingCount: 150,
+      synopsis: `Custom tracked audiobook for "${raw}".`,
+      isRead: false,
+      downloaded: 'No',
+      listened: 'No',
+      reminders: { oneWeekBefore: true, oneDayBefore: true, dayOfRelease: true },
+    };
+
+    addBook(newBook);
+    showToast(`Added "${newBook.title}" to your library!`, 'success');
+    onClose();
+  };
+
+  // Manual Form Submission (100% Reliable)
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualTitle.trim()) {
+      showToast('Please enter an audiobook title.', 'error');
+      return;
+    }
+
+    const newBook: Audiobook = {
+      id: `ab-manual-${Date.now()}`,
+      title: manualTitle.trim(),
+      author: manualAuthor.trim() || 'Unknown Author',
+      seriesName: manualSeries.trim() || '—',
+      series: manualSeries.trim()
+        ? { name: manualSeries.trim(), bookNumber: manualBookNumber.trim() || undefined }
+        : undefined,
+      narrator: manualNarrator.trim() || 'Unspecified',
+      narrators: manualNarrator.trim() ? [manualNarrator.trim()] : ['Unspecified'],
+      releaseDate: manualDate || new Date().toISOString().split('T')[0],
+      coverUrl:
+        manualCover.trim() ||
+        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600',
+      genre: manualGenre,
+      runtimeHours: 12,
+      audibleRating: 4.8,
+      ratingCount: 50,
+      synopsis: `Manually added audiobook by ${manualAuthor.trim() || 'author'}.`,
+      isRead: false,
+      downloaded: 'No',
+      listened: 'No',
+      reminders: { oneWeekBefore: true, oneDayBefore: true, dayOfRelease: true },
+    };
+
+    addBook(newBook);
+    showToast(`Added "${newBook.title}" to library!`, 'success');
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-5 animate-in fade-in duration-200">
       <div
-        className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-5 space-y-4"
+        style={{
+          backgroundColor: 'var(--md-sys-color-surface)',
+          borderColor: 'var(--md-sys-color-outline-variant)',
+          color: 'var(--md-sys-color-on-surface)',
+          boxShadow: 'var(--md-elevation-3)',
+        }}
+        className="w-full max-w-xl rounded-3xl border flex flex-col max-h-[92vh] overflow-hidden select-none transition-colors duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-          <h3 className="font-display text-sm font-bold text-white flex items-center gap-2">
-            <Plus className="h-4 w-4 text-amber-400 stroke-[2.5]" />
-            <span>Add Audiobook, Series, or Author</span>
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Mode Selector */}
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-slate-400 block">
-            Target Type (Auto-detected if URL is pasted):
-          </label>
-          <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
-            <button
-              type="button"
-              onClick={() => setTargetType('Title')}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition ${
-                targetType === 'Title'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container-low)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="flex items-center justify-between p-4 sm:p-5 border-b shrink-0"
+        >
+          <div className="flex items-center gap-3">
+            <div
+              style={{
+                backgroundColor: 'var(--md-sys-color-primary)',
+                color: 'var(--md-sys-color-on-primary)',
+              }}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl font-bold shadow-md"
             >
-              <BookOpen className="h-3 w-3" />
-              <span>Book</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTargetType('Series')}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition ${
-                targetType === 'Series'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Layers className="h-3 w-3" />
-              <span>Series</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTargetType('Author')}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition ${
-                targetType === 'Author'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <User className="h-3 w-3" />
-              <span>Author</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTargetType('Narrator')}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition ${
-                targetType === 'Narrator'
-                  ? 'bg-amber-500 text-slate-950 font-bold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Mic className="h-3 w-3" />
-              <span>Narrator</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Input */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300 block">
-            {targetType === 'Series'
-              ? 'Enter Series Name or Audible Series Link:'
-              : targetType === 'Author'
-              ? 'Enter Author Name or Audible Author Link:'
-              : targetType === 'Narrator'
-              ? 'Enter Narrator Name or Audible Narrator Link:'
-              : 'Enter Book Title, ASIN, or Audible Link:'}
-          </label>
-          <textarea
-            rows={3}
-            value={inputUrl}
-            onChange={(e) => setInputUrl(e.target.value)}
-            placeholder={
-              targetType === 'Series'
-                ? 'e.g. Dungeon Crawler Carl, Bobiverse, or /series/... link'
-                : targetType === 'Author'
-                ? 'e.g. Brandon Sanderson, Matt Dinniman, or /author/... link'
-                : targetType === 'Narrator'
-                ? 'e.g. Jeff Hays, Ray Porter, or /narrator/... link'
-                : 'e.g. Project Hail Mary, B0D5B7L9K3, or /pd/... link'
-            }
-            className="w-full rounded-xl bg-slate-950 border border-slate-800 p-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-amber-500 resize-none font-mono"
-            autoFocus
-          />
-        </div>
-
-        {/* Live Status text */}
-        <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 flex items-center gap-2 text-xs">
-          {isLoading ? (
-            <Loader2 className="h-3.5 w-3.5 text-amber-400 animate-spin shrink-0" />
-          ) : (
-            <Sparkles className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-          )}
-          <span className={isLoading ? 'text-amber-300 font-semibold' : 'text-slate-400'}>
-            {statusText}
-          </span>
-        </div>
-
-        {/* 1-Click Samples */}
-        <div className="space-y-1 pt-1">
-          <span className="text-[11px] font-semibold text-slate-400 block">
-            Or try these popular samples:
-          </span>
-          <div className="grid grid-cols-2 gap-1.5">
-            {SAMPLE_URLS.map((s) => (
-              <button
-                key={s.label}
-                type="button"
-                onClick={() => {
-                  setInputUrl(s.url);
-                  if (s.label.includes('Series')) setTargetType('Series');
-                  else if (s.label.includes('Author')) setTargetType('Author');
-                  else if (s.label.includes('Narrator')) setTargetType('Narrator');
-                  else setTargetType('Title');
-                }}
-                className="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-left text-[11px] text-slate-300 hover:text-white transition flex items-center justify-between"
+              <Plus className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div>
+              <h3 className="font-display text-base sm:text-lg font-extrabold tracking-wide">
+                Add New Audiobook
+              </h3>
+              <p
+                style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                className="text-xs"
               >
-                <span className="truncate">{s.label}</span>
-                <ArrowRight className="h-3 w-3 text-slate-500 shrink-0 ml-1" />
-              </button>
-            ))}
+                Search Audible catalog or enter details manually
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
           <button
-            type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:text-white transition"
+            className="md-btn-icon shadow-xs"
+            aria-label="Close dialog"
           >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleFetchAndAdd}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition shadow-sm disabled:opacity-50 cursor-pointer"
-          >
-            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5 stroke-[2.5]" />}
-            <span>Fetch &amp; Add</span>
+            <X className="h-5 w-5" />
           </button>
         </div>
 
+        {/* Material 3 Segmented Tab Switcher */}
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="flex p-2 border-b gap-2 shrink-0"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab('search')}
+            style={{
+              backgroundColor: activeTab === 'search' ? 'var(--md-sys-color-primary)' : 'transparent',
+              color: activeTab === 'search' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="flex-1 min-h-[44px] rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95"
+          >
+            <BookOpen className="h-4 w-4" />
+            <span>Search &amp; Auto-Fill</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('manual')}
+            style={{
+              backgroundColor: activeTab === 'manual' ? 'var(--md-sys-color-primary)' : 'transparent',
+              color: activeTab === 'manual' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="flex-1 min-h-[44px] rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Direct / Manual Entry</span>
+          </button>
+        </div>
+
+        {/* Dialog Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {/* TAB 1: Search & Auto-Fill */}
+          {activeTab === 'search' && (
+            <div className="space-y-4">
+              {/* Target Type Selector */}
+              <div
+                style={{
+                  backgroundColor: 'var(--md-sys-color-surface-container)',
+                  borderColor: 'var(--md-sys-color-outline-variant)',
+                }}
+                className="grid grid-cols-4 gap-1 p-1 rounded-2xl border"
+              >
+                {(['Book', 'Series', 'Author', 'Narrator'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setSearchTargetType(type)}
+                    style={{
+                      backgroundColor: searchTargetType === type ? 'var(--md-sys-color-primary)' : 'transparent',
+                      color: searchTargetType === type ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
+                    }}
+                    className="min-h-[40px] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search Form */}
+              <form onSubmit={handleSearchOrAdd} className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={`Enter ${searchTargetType} name or paste Audible link...`}
+                    value={queryInput}
+                    onChange={(e) => setQueryInput(e.target.value)}
+                    className="md-input flex-1 min-h-[48px] px-4 text-sm font-medium rounded-2xl"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSearching || !queryInput.trim()}
+                    className="md-btn-fab min-h-[48px] px-6 text-sm"
+                  >
+                    {isSearching ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 stroke-[2.5]" />
+                        <span>Search</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Quick suggestions */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+                  <span
+                    style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                    className="shrink-0 font-bold"
+                  >
+                    Quick:
+                  </span>
+                  {SAMPLE_QUERIES.map((sample) => (
+                    <button
+                      key={sample}
+                      type="button"
+                      onClick={() => {
+                        setQueryInput(sample);
+                      }}
+                      className="md-chip shrink-0 text-xs font-medium"
+                    >
+                      {sample}
+                    </button>
+                  ))}
+                </div>
+              </form>
+
+              {/* API Result Card */}
+              {searchResult && (
+                <div
+                  style={{
+                    backgroundColor: 'var(--md-sys-color-surface-container-low)',
+                    borderColor: 'var(--md-sys-color-accent-green)',
+                  }}
+                  className="p-4 rounded-3xl border-2 shadow-md space-y-3 animate-in fade-in duration-200"
+                >
+                  <div className="flex gap-3.5">
+                    <img
+                      src={searchResult.coverUrl}
+                      alt={searchResult.title}
+                      className="h-20 w-20 rounded-2xl object-cover bg-slate-800 shrink-0 border border-[var(--md-sys-color-outline-variant)] shadow-sm"
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div
+                        style={{ color: 'var(--md-sys-color-accent-green)' }}
+                        className="flex items-center gap-1.5 text-[11px] font-bold"
+                      >
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        <span>Audible Match Discovered</span>
+                      </div>
+                      <h4 className="font-bold text-sm sm:text-base truncate">{searchResult.title}</h4>
+                      <p
+                        style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                        className="text-xs"
+                      >
+                        By {searchResult.author}
+                      </p>
+                      <p
+                        style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                        className="text-xs"
+                      >
+                        Release Date: <strong style={{ color: 'var(--md-sys-color-on-surface)' }}>{searchResult.releaseDate}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleConfirmAddResult}
+                    style={{
+                      backgroundColor: 'var(--md-sys-color-accent-green)',
+                      color: '#ffffff',
+                    }}
+                    className="w-full min-h-[48px] rounded-2xl font-bold text-sm shadow-md transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="h-5 w-5" />
+                    <span>Confirm &amp; Add to Library</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Graceful Fallback if API returned no direct match */}
+              {fallbackTriggered && (
+                <div
+                  style={{
+                    backgroundColor: 'var(--md-sys-color-primary-container)',
+                    borderColor: 'var(--md-sys-color-primary)',
+                    color: 'var(--md-sys-color-on-primary-container)',
+                  }}
+                  className="p-4 rounded-3xl border text-xs space-y-3 animate-in fade-in duration-150 shadow-sm"
+                >
+                  <div className="flex items-center gap-2 font-bold text-sm">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>Exact catalog entry not auto-matched</span>
+                  </div>
+                  <p className="text-xs leading-relaxed opacity-90">
+                    You can still track this audiobook right now with 1 tap. We will add it to your library immediately:
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDirectAddFallback}
+                    className="md-btn-fab w-full min-h-[46px] text-xs font-bold"
+                  >
+                    <Plus className="h-4 w-4 stroke-[2.5]" />
+                    <span>Add "{queryInput}" Directly to Library</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: Direct / Manual Entry Form (Always Works) */}
+          {activeTab === 'manual' && (
+            <form onSubmit={handleManualSubmit} className="space-y-3.5 animate-in fade-in duration-150">
+              {/* Title */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold">
+                  Audiobook Title <span style={{ color: 'var(--md-sys-color-error)' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. The Way of Kings"
+                  value={manualTitle}
+                  onChange={(e) => setManualTitle(e.target.value)}
+                  required
+                  className="md-input w-full min-h-[46px] px-4 text-sm font-medium rounded-2xl"
+                />
+              </div>
+
+              {/* Author & Series */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold">Author Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Brandon Sanderson"
+                    value={manualAuthor}
+                    onChange={(e) => setManualAuthor(e.target.value)}
+                    className="md-input w-full min-h-[46px] px-4 text-xs sm:text-sm font-medium rounded-2xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold">Series Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. The Stormlight Archive"
+                    value={manualSeries}
+                    onChange={(e) => setManualSeries(e.target.value)}
+                    className="md-input w-full min-h-[46px] px-4 text-xs sm:text-sm font-medium rounded-2xl"
+                  />
+                </div>
+              </div>
+
+              {/* Narrator & Release Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold">Narrator</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Michael Kramer, Kate Reading"
+                    value={manualNarrator}
+                    onChange={(e) => setManualNarrator(e.target.value)}
+                    className="md-input w-full min-h-[46px] px-4 text-xs sm:text-sm font-medium rounded-2xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold">Release Date</label>
+                  <input
+                    type="date"
+                    value={manualDate}
+                    onChange={(e) => setManualDate(e.target.value)}
+                    className="md-input w-full min-h-[46px] px-4 text-xs sm:text-sm font-medium rounded-2xl"
+                  />
+                </div>
+              </div>
+
+              {/* Genre & Cover URL */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold">Genre</label>
+                  <select
+                    value={manualGenre}
+                    onChange={(e) => setManualGenre(e.target.value as any)}
+                    className="md-input w-full min-h-[46px] px-4 text-xs sm:text-sm font-medium rounded-2xl"
+                  >
+                    <option value="Sci-Fi">Sci-Fi</option>
+                    <option value="Fantasy">Fantasy</option>
+                    <option value="LitRPG">LitRPG</option>
+                    <option value="Thriller">Thriller</option>
+                    <option value="Mystery">Mystery</option>
+                    <option value="Horror">Horror</option>
+                    <option value="Non-Fiction">Non-Fiction</option>
+                    <option value="Romance">Romance</option>
+                    <option value="Historical">Historical</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold">Cover Image URL (Optional)</label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={manualCover}
+                    onChange={(e) => setManualCover(e.target.value)}
+                    className="md-input w-full min-h-[46px] px-4 text-xs sm:text-sm font-medium rounded-2xl"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                className="md-btn-fab w-full min-h-[48px] text-sm mt-3"
+              >
+                <Plus className="h-5 w-5 stroke-[2.5]" />
+                <span>Add Audiobook to Library</span>
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

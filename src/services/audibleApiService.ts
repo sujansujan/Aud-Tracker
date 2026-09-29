@@ -416,7 +416,8 @@ export async function fetchAudibleApiMetadata(urlOrAsin: string): Promise<Audibl
 export async function scanWatchlistTargetLive(
   target: WatchlistItem,
   existingBooks: Audiobook[],
-  muteList: MuteItem[]
+  muteList: MuteItem[],
+  languageFilter: 'english_only' | 'all_languages' = 'english_only'
 ): Promise<Audiobook[]> {
   const newBooks: Audiobook[] = [];
   const cleanTarget = target.name.trim();
@@ -552,8 +553,8 @@ export async function scanWatchlistTargetLive(
       }
     }
 
-    // 3. English Language Guard (Rejects German, Spanish, French, etc.)
-    if (!isEnglishAudiobook(p.language, p.title)) {
+    // 3. Language Guard (Filter non-English only if languageFilter is 'english_only')
+    if (languageFilter === 'english_only' && !isEnglishAudiobook(p.language, p.title)) {
       continue;
     }
 

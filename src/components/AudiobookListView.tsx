@@ -76,45 +76,58 @@ export const AudiobookListView: React.FC<AudiobookListViewProps> = ({
   }, []);
 
   return (
-    <div className="relative flex-1 overflow-x-auto overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl">
-      <table className="w-full text-left text-xs text-slate-300 border-collapse select-none">
-        <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+    <div
+      style={{
+        backgroundColor: 'var(--md-sys-color-surface)',
+        borderColor: 'var(--md-sys-color-outline-variant)',
+      }}
+      className="relative flex-1 overflow-x-auto overflow-y-auto border rounded-2xl shadow-sm transition-colors duration-200"
+    >
+      <table className="w-full text-left text-xs border-collapse select-none">
+        <thead
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface-container)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+            color: 'var(--md-sys-color-on-surface-variant)',
+          }}
+          className="sticky top-0 z-10 border-b text-[11px] font-extrabold uppercase tracking-wider"
+        >
           <tr>
-            <th className="p-2.5 w-8 text-center">
+            <th className="p-3 w-10 text-center">
               <input
                 type="checkbox"
                 checked={books.length > 0 && selectedIds.length === books.length}
                 onChange={handleSelectAll}
-                className="accent-amber-500 rounded cursor-pointer"
+                className="rounded cursor-pointer accent-[var(--md-sys-color-primary)] h-4 w-4"
               />
             </th>
-            <th className="p-2.5 min-w-[200px]">Title</th>
-            <th className="p-2.5 min-w-[130px]">Series</th>
-            <th className="p-2.5 min-w-[110px]">Author</th>
-            <th className="p-2.5 min-w-[120px]">Narrator</th>
-            <th className="p-2.5 min-w-[90px] tabular-nums">Release Date</th>
-            <th className="p-2.5 min-w-[110px]">Status</th>
-            <th className="p-2.5 min-w-[55px] text-center">DL</th>
-            <th className="p-2.5 min-w-[65px] text-center">Listened</th>
-            <th className="p-2.5 min-w-[50px] text-center">Link</th>
+            <th className="p-3 min-w-[200px]">Title</th>
+            <th className="p-3 min-w-[130px]">Series</th>
+            <th className="p-3 min-w-[110px]">Author</th>
+            <th className="p-3 min-w-[120px]">Narrator</th>
+            <th className="p-3 min-w-[100px] tabular-nums">Release Date</th>
+            <th className="p-3 min-w-[110px]">Status</th>
+            <th className="p-3 min-w-[65px] text-center">DL</th>
+            <th className="p-3 min-w-[70px] text-center">Listened</th>
+            <th className="p-3 min-w-[50px] text-center">Link</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800/60 font-sans">
+        <tbody className="divide-y divide-[var(--md-sys-color-outline-variant)]">
           {books.map((book) => {
             const isSelected = selectedIds.includes(book.id) || selectedBookId === book.id;
             const days = getDaysUntil(book.releaseDate);
 
             let statusLabel = '';
-            let statusColor = '';
+            let statusColor = 'var(--md-sys-color-on-surface-variant)';
             if (days < 0) {
               statusLabel = '🟢 Released';
-              statusColor = 'text-slate-400';
+              statusColor = 'var(--md-sys-color-on-surface-variant)';
             } else if (days === 0) {
               statusLabel = '🔥 Released Today!';
-              statusColor = 'text-emerald-400 font-bold';
+              statusColor = 'var(--md-sys-color-accent-green)';
             } else {
               statusLabel = `⏳ In ${days} day(s)`;
-              statusColor = 'text-amber-400 font-semibold';
+              statusColor = 'var(--md-sys-color-accent-orange)';
             }
 
             const seriesText = book.seriesName || book.series?.name || '—';
@@ -126,13 +139,19 @@ export const AudiobookListView: React.FC<AudiobookListViewProps> = ({
                 onClick={(e) => handleRowClick(book.id, e)}
                 onDoubleClick={() => handleRowDoubleClick(book)}
                 onContextMenu={(e) => handleContextMenu(e, book)}
-                className={`transition-colors cursor-pointer ${
-                  isSelected
-                    ? 'bg-slate-800/90 text-white font-medium border-l-2 border-l-amber-500'
-                    : 'hover:bg-slate-900/60'
+                style={{
+                  backgroundColor: isSelected
+                    ? 'var(--md-sys-color-primary-container)'
+                    : undefined,
+                  color: isSelected
+                    ? 'var(--md-sys-color-on-primary-container)'
+                    : 'var(--md-sys-color-on-surface)',
+                }}
+                className={`transition-colors cursor-pointer hover:bg-[var(--md-sys-color-surface-container-high)] ${
+                  isSelected ? 'font-medium border-l-4 border-l-[var(--md-sys-color-primary)]' : ''
                 }`}
               >
-                <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={selectedIds.includes(book.id)}
@@ -141,82 +160,108 @@ export const AudiobookListView: React.FC<AudiobookListViewProps> = ({
                         prev.includes(book.id) ? prev.filter((id) => id !== book.id) : [...prev, book.id]
                       );
                     }}
-                    className="accent-amber-500 rounded cursor-pointer"
+                    className="rounded cursor-pointer accent-[var(--md-sys-color-primary)] h-4 w-4"
                   />
                 </td>
 
                 {/* Title */}
-                <td className="p-2.5 font-semibold text-slate-100 max-w-xs truncate" title={book.title}>
+                <td className="p-3 font-bold max-w-xs truncate" title={book.title}>
                   {book.title}
                 </td>
 
                 {/* Series */}
-                <td className="p-2.5 text-amber-400/90 max-w-[140px] truncate" title={seriesText}>
+                <td
+                  style={{ color: 'var(--md-sys-color-secondary)' }}
+                  className="p-3 font-semibold max-w-[140px] truncate"
+                  title={seriesText}
+                >
                   {seriesText}
                 </td>
 
                 {/* Author */}
-                <td className="p-2.5 text-slate-200 max-w-[120px] truncate" title={book.author}>
+                <td className="p-3 font-medium max-w-[120px] truncate" title={book.author}>
                   {book.author}
                 </td>
 
                 {/* Narrator */}
-                <td className="p-2.5 text-slate-300 max-w-[130px] truncate" title={narratorText}>
+                <td
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                  className="p-3 max-w-[130px] truncate"
+                  title={narratorText}
+                >
                   {narratorText}
                 </td>
 
                 {/* Release Date */}
-                <td className="p-2.5 tabular-nums text-slate-400 whitespace-nowrap">
+                <td
+                  style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                  className="p-3 tabular-nums whitespace-nowrap"
+                >
                   {book.releaseDate}
                 </td>
 
                 {/* Status */}
-                <td className={`p-2.5 whitespace-nowrap ${statusColor}`}>
+                <td className="p-3 whitespace-nowrap font-bold" style={{ color: statusColor }}>
                   {statusLabel}
                 </td>
 
                 {/* Downloaded Toggle */}
-                <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => toggleField(book.id, 'downloaded')}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                      book.downloaded === 'Yes'
-                        ? 'bg-emerald-950 border border-emerald-700 text-emerald-400'
-                        : 'bg-slate-900 text-slate-500 hover:text-slate-300 border border-slate-800'
-                    }`}
+                    style={{
+                      backgroundColor:
+                        book.downloaded === 'Yes'
+                          ? 'var(--md-sys-color-accent-green-container)'
+                          : 'var(--md-sys-color-surface-container)',
+                      color:
+                        book.downloaded === 'Yes'
+                          ? 'var(--md-sys-color-accent-green)'
+                          : 'var(--md-sys-color-on-surface-variant)',
+                      borderColor: 'var(--md-sys-color-outline-variant)',
+                    }}
+                    className="px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer shadow-xs active:scale-95"
                   >
                     {book.downloaded || 'No'}
                   </button>
                 </td>
 
                 {/* Listened Toggle */}
-                <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => toggleField(book.id, 'listened')}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
-                      book.listened === 'Yes' || book.isRead
-                        ? 'bg-emerald-950 border border-emerald-700 text-emerald-400'
-                        : 'bg-slate-900 text-slate-500 hover:text-slate-300 border border-slate-800'
-                    }`}
+                    style={{
+                      backgroundColor:
+                        book.listened === 'Yes' || book.isRead
+                          ? 'var(--md-sys-color-primary-container)'
+                          : 'var(--md-sys-color-surface-container)',
+                      color:
+                        book.listened === 'Yes' || book.isRead
+                          ? 'var(--md-sys-color-on-primary-container)'
+                          : 'var(--md-sys-color-on-surface-variant)',
+                      borderColor: 'var(--md-sys-color-outline-variant)',
+                    }}
+                    className="px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer shadow-xs active:scale-95"
                   >
                     {book.listened === 'Yes' || book.isRead ? 'Yes' : 'No'}
                   </button>
                 </td>
 
                 {/* Link */}
-                <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                   {book.url || book.audibleUrl ? (
                     <a
                       href={book.url || book.audibleUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Open on Audible"
-                      className="inline-flex p-1 text-slate-400 hover:text-amber-400 transition"
+                      style={{ color: 'var(--md-sys-color-primary)' }}
+                      className="inline-flex p-1.5 rounded-lg hover:bg-[var(--md-sys-color-surface-container-high)] transition"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" />
+                      <ExternalLink className="h-4 w-4" />
                     </a>
                   ) : (
-                    <span className="text-slate-600">—</span>
+                    <span style={{ color: 'var(--md-sys-color-outline)' }}>—</span>
                   )}
                 </td>
               </tr>
@@ -225,90 +270,88 @@ export const AudiobookListView: React.FC<AudiobookListViewProps> = ({
         </tbody>
       </table>
 
-      {books.length === 0 && (
-        <div className="p-12 text-center text-xs text-slate-500">
-          No audiobooks match current filters. Use "➕ Add Book" or "📋 Watchlist" to import releases.
-        </div>
-      )}
-
-      {/* AHK Right-Click Context Menu */}
+      {/* Context Menu (Right Click) */}
       {contextMenu && (
         <div
-          className="fixed z-50 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 text-xs text-slate-200 min-w-[240px] space-y-0.5 animate-in fade-in duration-100"
-          style={{ top: Math.min(contextMenu.y, window.innerHeight - 200), left: Math.min(contextMenu.x, window.innerWidth - 250) }}
+          style={{
+            top: `${contextMenu.y}px`,
+            left: `${contextMenu.x}px`,
+            backgroundColor: 'var(--md-sys-color-surface)',
+            borderColor: 'var(--md-sys-color-outline)',
+            color: 'var(--md-sys-color-on-surface)',
+          }}
+          className="fixed z-50 w-56 rounded-2xl border shadow-xl p-1.5 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100"
           onClick={(e) => e.stopPropagation()}
         >
+          <div
+            style={{ borderColor: 'var(--md-sys-color-outline-variant)' }}
+            className="px-3 py-2 border-b mb-1"
+          >
+            <p className="font-bold truncate">{contextMenu.book.title}</p>
+            <p style={{ color: 'var(--md-sys-color-on-surface-variant)' }} className="text-[10px] truncate">
+              {contextMenu.book.author}
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              toggleField(contextMenu.book.id, 'downloaded');
+              setContextMenu(null);
+            }}
+            className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--md-sys-color-surface-container)] transition cursor-pointer"
+          >
+            Toggle Downloaded ({contextMenu.book.downloaded || 'No'})
+          </button>
+
+          <button
+            onClick={() => {
+              toggleField(contextMenu.book.id, 'listened');
+              setContextMenu(null);
+            }}
+            className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--md-sys-color-surface-container)] transition cursor-pointer"
+          >
+            Toggle Listened ({contextMenu.book.listened || 'No'})
+          </button>
+
           {contextMenu.book.seriesName && contextMenu.book.seriesName !== '—' && (
             <button
               onClick={() => {
                 quickMuteSeries(contextMenu.book.seriesName!);
                 setContextMenu(null);
               }}
-              className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-200 transition cursor-pointer"
+              style={{ color: 'var(--md-sys-color-error)' }}
+              className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--md-sys-color-surface-container)] transition cursor-pointer"
             >
-              🔇 Mute this Series ('{contextMenu.book.seriesName}')
+              Mute Series: {contextMenu.book.seriesName}
             </button>
           )}
-
-          {contextMenu.book.author && contextMenu.book.author !== 'Unknown Author' && (
-            <button
-              onClick={() => {
-                quickAddWatchlist('Author', contextMenu.book.author, contextMenu.book.authorUrl);
-                setContextMenu(null);
-              }}
-              className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-200 transition cursor-pointer"
-            >
-              ➕ Add Author to Watchlist ('{contextMenu.book.author}')
-            </button>
-          )}
-
-          {contextMenu.book.seriesName && contextMenu.book.seriesName !== '—' && (
-            <button
-              onClick={() => {
-                quickAddWatchlist('Series', contextMenu.book.seriesName!, contextMenu.book.seriesUrl);
-                setContextMenu(null);
-              }}
-              className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-200 transition cursor-pointer"
-            >
-              ➕ Add Series to Watchlist ('{contextMenu.book.seriesName}')
-            </button>
-          )}
-
-          {contextMenu.book.narrator && contextMenu.book.narrator !== '—' && (
-            <button
-              onClick={() => {
-                quickAddWatchlist('Narrator', contextMenu.book.narrator!.split(',')[0].trim());
-                setContextMenu(null);
-              }}
-              className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-200 transition cursor-pointer"
-            >
-              ➕ Add Narrator to Watchlist ('{contextMenu.book.narrator.split(',')[0].trim()}')
-            </button>
-          )}
-
-          <div className="h-px bg-slate-800 my-1" />
 
           <button
             onClick={() => {
-              const url = contextMenu.book.url || contextMenu.book.audibleUrl;
-              if (url) window.open(url, '_blank', 'noopener,noreferrer');
+              quickAddWatchlist('Author', contextMenu.book.author);
               setContextMenu(null);
             }}
-            className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-800 text-slate-200 transition cursor-pointer"
+            className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--md-sys-color-surface-container)] transition cursor-pointer"
           >
-            🌐 Open in Browser
+            Watch Author: {contextMenu.book.author}
           </button>
+
+          <div
+            style={{ backgroundColor: 'var(--md-sys-color-outline-variant)' }}
+            className="h-px my-1"
+          />
 
           <button
             onClick={() => {
               if (window.confirm(`Delete "${contextMenu.book.title}"?`)) {
                 deleteBook(contextMenu.book.id);
+                setContextMenu(null);
               }
-              setContextMenu(null);
             }}
-            className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-rose-950/60 text-rose-300 transition cursor-pointer"
+            style={{ color: 'var(--md-sys-color-error)' }}
+            className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--md-sys-color-error-container)] transition cursor-pointer font-bold"
           >
-            ❌ Delete Book
+            Delete from Library
           </button>
         </div>
       )}

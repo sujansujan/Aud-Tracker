@@ -1,14 +1,30 @@
 import React from 'react';
 import { Audiobook } from '../types/audiobook';
 import { useTracker } from '../context/TrackerContext';
-import { getReleaseCountdown } from '../utils/notifications';
-import { Star, Bell, BellRing, Play, Square, Check, Headphones, ExternalLink } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  DownloadCloud,
+  CheckCircle,
+  ExternalLink,
+  Volume2,
+  Sparkles,
+  BookOpen,
+  User,
+  Layers,
+  Star,
+  Mic,
+  Check,
+} from 'lucide-react';
+import { getReleaseCountdown, formatReleaseDateFriendly } from '../utils/notifications';
 
 interface AudiobookCardProps {
   book: Audiobook;
   viewMode: 'grid' | 'compact_grid' | 'list';
   onSelect: (book: Audiobook) => void;
   onOpenMarkRead: (book: Audiobook) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 export const AudiobookCard: React.FC<AudiobookCardProps> = ({
@@ -16,172 +32,211 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
   viewMode,
   onSelect,
   onOpenMarkRead,
+  isSelected = false,
+  onToggleSelect,
 }) => {
   const { toggleReminder, activeAudio, toggleAudioPreview, isEntityTracked } = useTracker();
   const countdown = getReleaseCountdown(book.releaseDate);
 
-  const isPlayingThis = activeAudio.isPlaying && activeAudio.bookId === book.id;
+  const isAuthorTracked = isEntityTracked('author', book.author);
+  const isSeriesTracked = book.series ? isEntityTracked('series', book.series.name) : false;
 
-  // Check if book matches any followed author, narrator, or series
-  const matchesTrackedAuthor = isEntityTracked('author', book.author);
-  const matchesTrackedNarrator = book.narrators.some((n) => isEntityTracked('narrator', n));
-  const matchesTrackedSeries = book.series ? isEntityTracked('series', book.series.name) : false;
-  const isFollowed = matchesTrackedAuthor || matchesTrackedNarrator || matchesTrackedSeries;
+  const isPlayingCurrent = activeAudio.isPlaying && activeAudio.bookId === book.id;
 
-  // Countdown urgency badge styling
-  const urgencyStyles = {
-    today: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse',
-    tomorrow: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-    week: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    soon: 'bg-slate-800 text-slate-300 border-slate-700',
-    future: 'bg-slate-800/80 text-slate-400 border-slate-700/60',
-    released: 'bg-slate-800 text-slate-400 border-slate-700/40',
-  }[countdown.urgency];
+  // Release status badge style (Material 3 pill)
+  const getBadgeStyle = () => {
+    if (countdown.isToday) {
+      return {
+        bg: 'var(--md-sys-color-accent-green)',
+        text: '#ffffff',
+        border: 'transparent',
+      };
+    }
+    if (countdown.daysUntil <= 7 && countdown.daysUntil > 0) {
+      return {
+        bg: 'var(--md-sys-color-accent-orange)',
+        text: '#ffffff',
+        border: 'transparent',
+      };
+    }
+    if (countdown.daysUntil > 0) {
+      return {
+        bg: 'var(--md-sys-color-primary-container)',
+        text: 'var(--md-sys-color-on-primary-container)',
+        border: 'var(--md-sys-color-primary)',
+      };
+    }
+    return {
+      bg: 'var(--md-sys-color-surface-container)',
+      text: 'var(--md-sys-color-on-surface-variant)',
+      border: 'var(--md-sys-color-outline-variant)',
+    };
+  };
 
+  const badgeStyle = getBadgeStyle();
+
+  // -------------------------------------------------------------
+  // LIST VIEW (Expanded Card Row)
+  // -------------------------------------------------------------
   if (viewMode === 'list') {
     return (
-      <div className="group relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl bg-slate-900/70 border border-slate-800/80 hover:border-slate-700 hover:bg-slate-900 transition-all duration-200">
-        {/* Cover Thumbnail */}
+      <div
+        style={{
+          backgroundColor: isSelected
+            ? 'var(--md-sys-color-primary-container)'
+            : 'var(--md-sys-color-surface)',
+          borderColor: isSelected
+            ? 'var(--md-sys-color-primary)'
+            : 'var(--md-sys-color-outline-variant)',
+        }}
+        className={`group relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-3xl border transition-all duration-200 shadow-sm hover:shadow-md ${
+          isSelected ? 'ring-2 ring-[var(--md-sys-color-primary)]' : ''
+        }`}
+      >
+        {/* Selection Checkbox */}
+        {onToggleSelect && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect(book.id);
+            }}
+            style={{
+              backgroundColor: isSelected
+                ? 'var(--md-sys-color-primary)'
+                : 'var(--md-sys-color-surface-container)',
+              borderColor: isSelected
+                ? 'var(--md-sys-color-primary)'
+                : 'var(--md-sys-color-outline-variant)',
+              color: isSelected
+                ? 'var(--md-sys-color-on-primary)'
+                : 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl border transition-transform active:scale-95 cursor-pointer shrink-0 shadow-sm"
+            aria-label={isSelected ? 'Deselect book' : 'Select book'}
+          >
+            <Check className="h-5 w-5 stroke-[2.5]" />
+          </button>
+        )}
+
+        {/* Cover Thumbnail with Audio Sample Play Button */}
         <div
           onClick={() => onSelect(book)}
-          className="relative h-28 w-28 sm:h-24 sm:w-24 shrink-0 rounded-xl overflow-hidden bg-slate-800 cursor-pointer shadow-md"
+          className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-2xl overflow-hidden shrink-0 cursor-pointer shadow-md group/cover"
         >
           <img
             src={book.coverUrl}
             alt={book.title}
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={(e) => {
-              // Zero-Broken-Image fallback container
-              e.currentTarget.style.display = 'none';
-            }}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover/cover:scale-105"
+            loading="lazy"
           />
-          {/* Audio preview overlay icon */}
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               toggleAudioPreview(book.id);
             }}
-            aria-label={isPlayingThis ? 'Stop sample' : 'Play sample'}
-            className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-black/75 text-amber-400 backdrop-blur-sm hover:bg-amber-500 hover:text-slate-950 transition"
+            style={{
+              backgroundColor: isPlayingCurrent ? 'var(--md-sys-color-accent-pink)' : 'rgba(40, 42, 54, 0.75)',
+              color: '#ffffff',
+            }}
+            className="absolute inset-0 m-auto h-11 w-11 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-all group-hover/cover:scale-110 active:scale-95 cursor-pointer"
+            title="Preview Audio Sample"
           >
-            {isPlayingThis ? <Square className="h-3 w-3 fill-current" /> : <Play className="h-3 w-3 fill-current ml-0.5" />}
+            <Volume2 className={`h-5 w-5 ${isPlayingCurrent ? 'animate-bounce' : ''}`} />
           </button>
         </div>
 
-        {/* Content & Metadata */}
-        <div className="flex-1 min-w-0" onClick={() => onSelect(book)}>
-          <div className="flex flex-wrap items-center gap-2 mb-1 text-xs">
-            <span className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold tabular-nums ${urgencyStyles}`}>
-              {countdown.label}
+        {/* Details Column */}
+        <div className="flex-1 min-w-0 space-y-1.5 cursor-pointer" onClick={() => onSelect(book)}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              style={{
+                backgroundColor: badgeStyle.bg,
+                color: badgeStyle.text,
+                borderColor: badgeStyle.border,
+              }}
+              className="px-3 py-1 rounded-full text-xs font-bold border shadow-xs"
+            >
+              {countdown.badgeText}
             </span>
-            {isFollowed && (
-              <span className="text-[11px] text-amber-400 font-medium">
-                ★ Tracked Creator
-              </span>
-            )}
-            {book.isRead && (
-              <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-                <Check className="h-3 w-3" /> Listened
-              </span>
-            )}
+            <span
+              style={{
+                backgroundColor: 'var(--md-sys-color-surface-container)',
+                color: 'var(--md-sys-color-on-surface-variant)',
+              }}
+              className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+            >
+              {book.genre}
+            </span>
           </div>
 
-          <h3 className="font-display text-base font-bold text-white truncate hover:text-amber-400 transition-colors cursor-pointer">
+          <h3 className="font-display font-bold text-base sm:text-lg tracking-tight truncate">
             {book.title}
           </h3>
 
-          {book.series && (
-            <p className="text-xs text-amber-400/90 font-medium truncate mt-0.5">
-              {book.series.name} {book.series.bookNumber ? `#${book.series.bookNumber}` : ''}
-            </p>
-          )}
-
-          <div className="mt-1 text-xs text-slate-300 truncate">
-            <span>By <strong className="text-white">{book.author}</strong></span>
-            <span className="text-slate-500 mx-1.5">·</span>
-            <span>Narrated by <strong className="text-slate-200">{book.narrators.join(', ')}</strong></span>
-          </div>
-
-          {/* Unboxed metadata with typographic separators */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-2 text-xs text-slate-400">
-            <span>{book.genre}</span>
-            <span aria-hidden="true" className="text-slate-600">·</span>
-            <span className="flex items-center gap-1 text-amber-400 font-semibold tabular-nums">
-              <Star className="h-3 w-3 fill-amber-400" />
-              {book.audibleRating.toFixed(1)}
-              <span className="text-slate-500 font-normal">({book.ratingCount.toLocaleString()})</span>
+          <div
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs"
+          >
+            <span className="flex items-center gap-1 font-semibold">
+              <User className="h-3.5 w-3.5" style={{ color: 'var(--md-sys-color-primary)' }} />
+              <span>{book.author}</span>
             </span>
-            <span aria-hidden="true" className="text-slate-600">·</span>
-            <span className="tabular-nums">Releases {book.releaseDate}</span>
-            {book.runtimeHours && (
-              <>
-                <span aria-hidden="true" className="text-slate-600">·</span>
-                <span className="tabular-nums">~{book.runtimeHours} hrs</span>
-              </>
+            {(book.seriesName || book.series?.name) && (
+              <span className="flex items-center gap-1 font-medium">
+                <Layers className="h-3.5 w-3.5" style={{ color: 'var(--md-sys-color-secondary)' }} />
+                <span>
+                  {book.seriesName || book.series?.name}{' '}
+                  {book.series?.bookNumber ? `#${book.series.bookNumber}` : ''}
+                </span>
+              </span>
             )}
+            <span className="flex items-center gap-1">
+              <Mic className="h-3.5 w-3.5 opacity-70" />
+              <span>{book.narrator || book.narrators.join(', ')}</span>
+            </span>
           </div>
+
+          <p
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            className="text-xs line-clamp-2 leading-relaxed opacity-90"
+          >
+            {book.synopsis}
+          </p>
         </div>
 
-        {/* Action Controls & Reminders */}
-        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-          {/* Reminder Schedule Toggles (1 Week, 1 Day, Day Of) */}
-          <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
-            <span className="text-[10px] text-slate-500 px-1 font-medium">Alerts:</span>
-            <button
-              onClick={() => toggleReminder(book.id, 'oneWeekBefore')}
-              title="Reminder 1 week before release"
-              aria-label="Toggle 1-week reminder"
-              className={`px-1.5 py-1 text-[10px] font-semibold rounded-md transition cursor-pointer ${
-                book.reminders.oneWeekBefore
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              1W
-            </button>
-            <button
-              onClick={() => toggleReminder(book.id, 'oneDayBefore')}
-              title="Reminder 1 day before release"
-              aria-label="Toggle 1-day reminder"
-              className={`px-1.5 py-1 text-[10px] font-semibold rounded-md transition cursor-pointer ${
-                book.reminders.oneDayBefore
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              1D
-            </button>
-            <button
-              onClick={() => toggleReminder(book.id, 'dayOfRelease')}
-              title="Reminder on release day"
-              aria-label="Toggle release day reminder"
-              className={`px-1.5 py-1 text-[10px] font-semibold rounded-md transition cursor-pointer ${
-                book.reminders.dayOfRelease
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              DAY
-            </button>
+        {/* Action Pills */}
+        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--md-sys-color-outline-variant)]">
+          <div className="flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--md-sys-color-accent-yellow)' }}>
+            <Star className="h-4 w-4 fill-current" />
+            <span>{book.audibleRating.toFixed(1)}</span>
           </div>
 
-          {/* Quick Mark as Read / Detail */}
-          <div className="flex items-center gap-2">
-            {!book.isRead ? (
-              <button
-                onClick={() => onOpenMarkRead(book)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition cursor-pointer"
+          <div className="flex items-center gap-1.5">
+            {book.downloaded === 'Yes' && (
+              <span
+                style={{
+                  backgroundColor: 'var(--md-sys-color-accent-green-container)',
+                  color: 'var(--md-sys-color-accent-green)',
+                }}
+                className="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1"
               >
-                Mark Read
-              </button>
-            ) : (
-              <button
-                onClick={() => onOpenMarkRead(book)}
-                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/60 transition cursor-pointer"
+                <DownloadCloud className="h-3.5 w-3.5" />
+                <span>Downloaded</span>
+              </span>
+            )}
+            {book.listened === 'Yes' && (
+              <span
+                style={{
+                  backgroundColor: 'var(--md-sys-color-primary-container)',
+                  color: 'var(--md-sys-color-on-primary-container)',
+                }}
+                className="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1"
               >
-                {book.userPersonalRating ? `${book.userPersonalRating}★ Logged` : 'Logged'}
-              </button>
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>Listened</span>
+              </span>
             )}
           </div>
         </div>
@@ -189,192 +244,177 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
     );
   }
 
-  // Grid and Compact Grid
+  // -------------------------------------------------------------
+  // GRID & COMPACT GRID VIEW (Material 3 Elevated Card)
+  // -------------------------------------------------------------
   const isCompact = viewMode === 'compact_grid';
 
   return (
-    <div className="group relative flex flex-col rounded-2xl bg-slate-900/80 border border-slate-800/90 overflow-hidden hover:border-slate-700 hover:shadow-xl hover:shadow-black/40 transition-all duration-200">
-      
+    <div
+      style={{
+        backgroundColor: isSelected
+          ? 'var(--md-sys-color-primary-container)'
+          : 'var(--md-sys-color-surface)',
+        borderColor: isSelected
+          ? 'var(--md-sys-color-primary)'
+          : 'var(--md-sys-color-outline-variant)',
+      }}
+      className={`group relative flex flex-col rounded-3xl border overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md ${
+        isSelected ? 'ring-2 ring-[var(--md-sys-color-primary)]' : ''
+      }`}
+    >
       {/* Cover Image Container */}
       <div
         onClick={() => onSelect(book)}
-        className="relative aspect-square w-full bg-slate-800 overflow-hidden cursor-pointer"
+        className={`relative w-full ${isCompact ? 'aspect-[3/4]' : 'aspect-square'} overflow-hidden cursor-pointer bg-[var(--md-sys-color-surface-container)]`}
       >
         <img
           src={book.coverUrl}
           alt={book.title}
-          referrerPolicy="no-referrer"
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none';
-          }}
+          loading="lazy"
         />
 
-        {/* Fallback pattern in case image fails */}
-        <div className="absolute inset-0 -z-10 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 to-slate-800 text-center">
-          <Headphones className="h-10 w-10 text-amber-500/40 mb-2" />
-          <span className="text-xs font-bold text-slate-300 line-clamp-2">{book.title}</span>
-        </div>
+        {/* Selection Checkbox */}
+        {onToggleSelect && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect(book.id);
+            }}
+            style={{
+              backgroundColor: isSelected
+                ? 'var(--md-sys-color-primary)'
+                : 'rgba(33, 34, 44, 0.75)',
+              borderColor: isSelected
+                ? 'var(--md-sys-color-primary)'
+                : 'rgba(255, 255, 255, 0.3)',
+              color: isSelected
+                ? 'var(--md-sys-color-on-primary)'
+                : '#ffffff',
+            }}
+            className="absolute top-3 right-3 z-20 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-2xl border shadow-lg backdrop-blur-md transition-transform active:scale-95 cursor-pointer"
+            aria-label={isSelected ? 'Deselect book' : 'Select book'}
+          >
+            <Check className="h-5 w-5 stroke-[2.5]" />
+          </button>
+        )}
 
-        {/* Floating Urgency Countdown Badge */}
-        <div className="absolute top-2.5 left-2.5 z-10">
-          <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold shadow-md backdrop-blur-md tabular-nums ${urgencyStyles}`}>
-            {countdown.label}
+        {/* Urgency Countdown Pill */}
+        <div className="absolute top-3 left-3 z-10">
+          <span
+            style={{
+              backgroundColor: badgeStyle.bg,
+              color: badgeStyle.text,
+              borderColor: badgeStyle.border,
+            }}
+            className="px-3 py-1 rounded-full border text-xs font-extrabold shadow-md backdrop-blur-md tabular-nums"
+          >
+            {countdown.badgeText}
           </span>
         </div>
 
-        {/* Audio Sample Play Button */}
+        {/* Play Audio Sample Preview Button */}
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             toggleAudioPreview(book.id);
           }}
-          aria-label={isPlayingThis ? 'Stop sample' : 'Play audio sample'}
-          title={isPlayingThis ? 'Stop sample' : 'Preview voice sample'}
-          className={`absolute bottom-2.5 right-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-xl backdrop-blur-md transition shadow-lg cursor-pointer ${
-            isPlayingThis
-              ? 'bg-amber-500 text-slate-950 scale-105'
-              : 'bg-black/75 text-amber-400 hover:bg-amber-500 hover:text-slate-950'
-          }`}
+          style={{
+            backgroundColor: isPlayingCurrent ? 'var(--md-sys-color-accent-pink)' : 'rgba(33, 34, 44, 0.8)',
+            color: '#ffffff',
+          }}
+          className="absolute bottom-3 right-3 z-10 h-10 w-10 rounded-full flex items-center justify-center shadow-md backdrop-blur-md transition-all group-hover:scale-110 active:scale-95 cursor-pointer"
+          title="Play audio preview"
         >
-          {isPlayingThis ? <Square className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
+          <Volume2 className={`h-4 w-4 ${isPlayingCurrent ? 'animate-bounce' : ''}`} />
         </button>
-
-        {/* Tracked Creator Star Tag */}
-        {isFollowed && (
-          <div className="absolute top-2.5 right-2.5 z-10">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-black/75 text-amber-400 backdrop-blur-sm border border-amber-500/30 text-xs shadow-md" title="From a tracked author, narrator, or series">
-              ★
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Card Body */}
-      <div className="flex flex-col flex-1 p-3.5">
-        
-        {/* Series label if exists */}
-        {book.series ? (
-          <p className="text-[11px] font-semibold text-amber-400/90 truncate mb-1">
-            {book.series.name} {book.series.bookNumber ? `#${book.series.bookNumber}` : ''}
-          </p>
-        ) : (
-          <p className="text-[11px] font-medium text-slate-500 truncate mb-1">
-            Standalone Release
-          </p>
-        )}
-
-        {/* Book Title */}
-        <h3
-          onClick={() => onSelect(book)}
-          className="font-display text-sm font-bold text-white line-clamp-1 hover:text-amber-400 transition-colors cursor-pointer"
-          title={book.title}
-        >
-          {book.title}
-        </h3>
-
-        {/* Author & Narrators */}
-        <div className="mt-1 text-xs text-slate-300">
-          <p className="truncate">
-            By <span className="font-semibold text-white">{book.author}</span>
-          </p>
-          <p className="truncate text-slate-400 text-[11px] mt-0.5">
-            Voice: <span className="text-slate-300">{book.narrators.join(', ')}</span>
-          </p>
-        </div>
-
-        {/* Unboxed Metadata (Zero-pill discipline) */}
-        {!isCompact && (
-          <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-slate-400">
-            <span>{book.genre}</span>
-            <span aria-hidden="true" className="text-slate-600">·</span>
-            <span className="flex items-center gap-0.5 text-amber-400 font-semibold tabular-nums">
-              <Star className="h-3 w-3 fill-amber-400" />
-              {book.audibleRating.toFixed(1)}
+      {/* Card Content */}
+      <div
+        className={`flex-1 p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer space-y-2`}
+        onClick={() => onSelect(book)}
+      >
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[11px]">
+            <span
+              style={{ color: 'var(--md-sys-color-primary)' }}
+              className="font-bold uppercase tracking-wider truncate"
+            >
+              {book.genre}
             </span>
-            <span aria-hidden="true" className="text-slate-600">·</span>
-            <span className="tabular-nums">{book.releaseDate.slice(5)}</span>
-          </div>
-        )}
-
-        {/* Card Footer: Reminders & Read Status */}
-        <div className="mt-auto pt-3 border-t border-slate-800/80 flex items-center justify-between gap-1.5">
-          {/* Reminders Toggle Bar (1w, 1d, Day) */}
-          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-950 border border-slate-800">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleReminder(book.id, 'oneWeekBefore');
-              }}
-              title="Remind 1 week before"
-              aria-label="Toggle 1-week notification"
-              className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition cursor-pointer ${
-                book.reminders.oneWeekBefore
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              1W
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleReminder(book.id, 'oneDayBefore');
-              }}
-              title="Remind 1 day before"
-              aria-label="Toggle 1-day notification"
-              className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition cursor-pointer ${
-                book.reminders.oneDayBefore
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              1D
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleReminder(book.id, 'dayOfRelease');
-              }}
-              title="Remind day of release"
-              aria-label="Toggle release day notification"
-              className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition cursor-pointer ${
-                book.reminders.dayOfRelease
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              DAY
-            </button>
+            <div className="flex items-center gap-1 font-bold" style={{ color: 'var(--md-sys-color-accent-yellow)' }}>
+              <Star className="h-3.5 w-3.5 fill-current" />
+              <span>{book.audibleRating.toFixed(1)}</span>
+            </div>
           </div>
 
-          {/* Read Status Button */}
-          {book.isRead ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenMarkRead(book);
-              }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-lg bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 hover:bg-emerald-900 cursor-pointer"
+          <h4 className="font-display font-bold text-sm sm:text-base leading-snug line-clamp-2">
+            {book.title}
+          </h4>
+
+          <p
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            className="text-xs font-semibold truncate"
+          >
+            {book.author}
+          </p>
+
+          {(book.seriesName || book.series?.name) && !isCompact && (
+            <p
+              style={{ color: 'var(--md-sys-color-secondary)' }}
+              className="text-[11px] font-medium truncate flex items-center gap-1"
             >
-              <Check className="h-3 w-3" />
-              <span>Read</span>
-            </button>
-          ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenMarkRead(book);
-              }}
-              className="px-2 py-1 text-[10px] font-medium rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition cursor-pointer"
-            >
-              + Log Read
-            </button>
+              <Layers className="h-3 w-3 shrink-0" />
+              <span>
+                {book.seriesName || book.series?.name}{' '}
+                {book.series?.bookNumber ? `#${book.series.bookNumber}` : ''}
+              </span>
+            </p>
           )}
         </div>
 
-      </div>
+        {/* Card Footer: Status Badges */}
+        <div className="flex items-center justify-between pt-2 border-t border-[var(--md-sys-color-outline-variant)] text-[11px]">
+          <span
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            className="truncate flex items-center gap-1"
+          >
+            <Calendar className="h-3 w-3" />
+            <span>{formatReleaseDateFriendly(book.releaseDate)}</span>
+          </span>
 
+          <div className="flex items-center gap-1 shrink-0">
+            {book.downloaded === 'Yes' && (
+              <span
+                style={{
+                  backgroundColor: 'var(--md-sys-color-accent-green-container)',
+                  color: 'var(--md-sys-color-accent-green)',
+                }}
+                className="px-2 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-0.5"
+                title="Downloaded"
+              >
+                <DownloadCloud className="h-3 w-3" />
+              </span>
+            )}
+            {book.listened === 'Yes' && (
+              <span
+                style={{
+                  backgroundColor: 'var(--md-sys-color-primary-container)',
+                  color: 'var(--md-sys-color-on-primary-container)',
+                }}
+                className="px-2 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-0.5"
+                title="Listened"
+              >
+                <CheckCircle className="h-3 w-3" />
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
