@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { TrackerProvider, useTracker } from './context/TrackerContext';
 import { HomeFilterBar } from './components/HomeFilterBar';
 import { PullToRefresh } from './components/PullToRefresh';
-import { AudiobookListView } from './components/AudiobookListView';
-import { PreviewPanel } from './components/PreviewPanel';
 import { StatusBar } from './components/StatusBar';
 import { AddBookDialog } from './components/AddBookDialog';
 import { SettingsDialog } from './components/SettingsDialog';
@@ -15,24 +13,19 @@ import { MarkAsReadModal } from './components/MarkAsReadModal';
 import { FloatingBatchBar } from './components/FloatingBatchBar';
 import { ToastContainer } from './components/ToastContainer';
 import { OfflineIndicator } from './components/OfflineIndicator';
-import { PWAInstallButton } from './components/PWAInstallButton';
 import { Audiobook } from './types/audiobook';
 import { getDaysUntil } from './utils/notifications';
-import { Headphones, Plus, Settings, Eye, Menu, Sun, Moon } from 'lucide-react';
+import { Headphones, Plus, Settings, Menu, Sun, Moon, Info } from 'lucide-react';
 
 function TrackerMain() {
   const {
     books,
-    selectedBook,
     searchQuery,
     selectedGenre,
     minRating,
     viewFilter,
-    viewMode,
-    setViewMode,
     runScheduledScan,
     isScanning,
-    languageFilter,
     theme,
     toggleTheme,
   } = useTracker();
@@ -47,7 +40,6 @@ function TrackerMain() {
 
   // Multi-selection across all views
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [showMobilePreview, setShowMobilePreview] = useState(false);
 
   // Filter & Sort
   const filteredBooks = books
@@ -117,72 +109,58 @@ function TrackerMain() {
       style={{ backgroundColor: 'var(--md-sys-color-background)', color: 'var(--md-sys-color-on-surface)' }}
       className="min-h-screen flex flex-col font-sans select-none antialiased overflow-x-hidden transition-colors duration-250"
     >
-      {/* Modern Material Design Top App Bar */}
+      {/* Modern Material Design 3 Top App Bar */}
       <header
         style={{
           backgroundColor: 'var(--md-sys-color-surface)',
           borderColor: 'var(--md-sys-color-outline-variant)',
         }}
-        className="pt-safe pb-3 px-3 sm:px-5 flex items-center justify-between border-b shadow-sm shrink-0 z-20 transition-colors duration-200"
+        className="pt-safe pb-3 px-3.5 sm:px-6 flex items-center justify-between border-b shadow-sm shrink-0 z-20 transition-colors duration-200"
       >
-        {/* Left Side: Material Navigation Drawer Button + Brand Identity */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5">
-          {/* Hamburger Menu (Large 44px Material Touch Target) */}
+        {/* Left Side: Material Navigation Drawer Button + Clean Brand Identity */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          {/* Hamburger Menu (Large Material Touch Target with intuitive icon) */}
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="md-btn-icon shadow-sm"
+            className="md-btn-icon shadow-xs"
             aria-label="Open navigation menu and watchlists"
-            title="Open Menu (Tracked Authors, Series, Narrators & Settings)"
+            title="Open Menu: Tracked Authors, Series, Narrators & Tools"
           >
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <div
               style={{
                 backgroundColor: 'var(--md-sys-color-primary)',
                 color: 'var(--md-sys-color-on-primary)',
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-2xl font-bold shadow-md transition-transform active:scale-95"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl font-bold shadow-md transition-transform active:scale-95"
             >
               <Headphones className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-display text-sm sm:text-base font-extrabold tracking-wide truncate">
-                  Audible Tracker
-                </h1>
-                <span
-                  style={{
-                    backgroundColor: 'var(--md-sys-color-primary-container)',
-                    color: 'var(--md-sys-color-on-primary-container)',
-                    borderColor: 'var(--md-sys-color-primary)',
-                  }}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold border hidden sm:inline-flex items-center"
-                >
-                  {theme === 'dark' ? '🧛 Dracula' : '☀️ Alucard'}
-                </span>
-              </div>
-              {languageFilter === 'all_languages' && (
-                <span
-                  style={{ color: 'var(--md-sys-color-accent-orange)' }}
-                  className="text-[10px] font-bold hidden sm:inline block"
-                >
-                  • Multilingual Mode
-                </span>
-              )}
+              <h1 className="font-display text-base sm:text-lg font-extrabold tracking-tight truncate">
+                Audible Tracker
+              </h1>
+              <p
+                style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                className="text-[11px] font-medium hidden sm:block leading-none mt-0.5"
+              >
+                Audiobook Releases &amp; Series
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Right Side Actions: Material Theme Toggle, Large + Add Button, Settings, Preview */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Material Theme Mode Switcher (Alucard Light / Dracula Dark) */}
+        {/* Right Side Actions: Theme Switcher, Large + Add Button, Settings */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Theme Mode Switcher (Alucard Light / Dracula Dark) */}
           <button
             onClick={toggleTheme}
-            className="md-btn-icon shadow-sm"
+            className="md-btn-icon shadow-xs"
             title={theme === 'dark' ? 'Switch to Alucard Light Mode' : 'Switch to Dracula Dark Mode'}
-            aria-label="Toggle theme"
+            aria-label="Toggle light/dark theme"
           >
             {theme === 'dark' ? (
               <Sun className="h-5 w-5 text-amber-300 transition-transform rotate-0 hover:rotate-45" />
@@ -191,54 +169,38 @@ function TrackerMain() {
             )}
           </button>
 
-          <PWAInstallButton compact />
-
-          {/* Material 3 Floating Action Button (FAB Style) for + Add */}
+          {/* Large Material 3 Extended Floating Action Button (FAB Style) for + Add */}
           <button
             onClick={() => setIsAddOpen(true)}
-            className="md-btn-fab min-h-[44px] px-4 sm:px-5 text-xs sm:text-sm"
+            className="md-btn-fab min-h-[46px] px-4 sm:px-6 text-xs sm:text-sm shadow-md"
             title="Add audiobook, series, author, or narrator"
           >
             <Plus className="h-5 w-5 stroke-[2.5]" />
-            <span>Add</span>
+            <span>Add Item</span>
           </button>
 
-          {/* Generously Sized Settings Button */}
+          {/* Large Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="md-btn-icon shadow-sm"
-            title="Settings & Backup"
+            className="md-btn-icon shadow-xs"
+            title="Settings, Watchlists & Backup"
             aria-label="Settings"
           >
             <Settings className="h-5 w-5" style={{ color: 'var(--md-sys-color-primary)' }} />
-          </button>
-
-          {/* Preview toggle on mobile */}
-          <button
-            onClick={() => setShowMobilePreview(!showMobilePreview)}
-            className={`lg:hidden md-btn-icon ${
-              showMobilePreview ? 'ring-2 ring-[var(--md-sys-color-primary)]' : ''
-            }`}
-            title="Toggle preview panel"
-          >
-            <Eye className="h-5 w-5" />
           </button>
         </div>
       </header>
 
       {/* Streamlined Material 3 Home Filter & Search Bar */}
       <HomeFilterBar
-        viewMode={viewMode}
-        setViewMode={setViewMode}
         totalFilteredCount={filteredBooks.length}
         selectedCount={selectedIds.length}
         onToggleSelectAll={handleToggleSelectAll}
         isAllSelected={filteredBooks.length > 0 && selectedIds.length >= filteredBooks.length}
       />
 
-      {/* Main Workspace with Pull-to-Refresh */}
-      <main className="flex-1 flex flex-col lg:flex-row p-2.5 sm:p-4 gap-3.5 overflow-hidden">
-        {/* Book View (wrapped with smooth pull-to-refresh) */}
+      {/* Main Workspace (Full Width, Compact Grid Only Mode with Pull-to-Refresh) */}
+      <main className="flex-1 flex flex-col p-3 sm:p-5 overflow-hidden">
         <div
           style={{
             backgroundColor: 'var(--md-sys-color-surface-container-low)',
@@ -246,13 +208,33 @@ function TrackerMain() {
           }}
           className="flex-1 flex flex-col min-w-0 overflow-hidden rounded-3xl border shadow-sm transition-colors duration-200"
         >
+          {/* Navigation Helper Banner */}
+          <div
+            style={{
+              backgroundColor: 'var(--md-sys-color-surface)',
+              borderColor: 'var(--md-sys-color-outline-variant)',
+              color: 'var(--md-sys-color-on-surface-variant)',
+            }}
+            className="px-4 py-2 border-b text-xs flex items-center justify-between shrink-0"
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              <Info className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--md-sys-color-primary)' }} />
+              <span className="truncate">
+                Compact Poster View · Tap any book to view synopsis, play audio sample, or schedule alarms.
+              </span>
+            </div>
+            <span className="hidden md:inline font-semibold text-[11px] shrink-0 ml-2">
+              Pull down to check for new releases
+            </span>
+          </div>
+
           <PullToRefresh
             onRefresh={handlePullRefresh}
             isRefreshing={isScanning}
-            className="flex-1 h-full"
+            className="flex-1 h-full overflow-y-auto"
           >
             {filteredBooks.length === 0 ? (
-              <div className="h-full min-h-[320px] flex flex-col items-center justify-center p-8 text-center">
+              <div className="h-full min-h-[340px] flex flex-col items-center justify-center p-8 text-center">
                 <div
                   style={{ backgroundColor: 'var(--md-sys-color-surface-container)' }}
                   className="h-16 w-16 rounded-full flex items-center justify-center mb-4 shadow-inner"
@@ -262,12 +244,12 @@ function TrackerMain() {
                     style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
                   />
                 </div>
-                <h3 className="text-base font-bold mb-1">No audiobooks found</h3>
+                <h3 className="text-base font-bold mb-1">No audiobooks match this filter</h3>
                 <p
                   style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
                   className="text-xs max-w-sm mb-6 leading-relaxed"
                 >
-                  Try adjusting your search or filters, or tap the primary <span style={{ color: 'var(--md-sys-color-primary)' }} className="font-bold">+ Add</span> button to discover or add books.
+                  Try selecting "All Releases" above, or tap the <span style={{ color: 'var(--md-sys-color-primary)' }} className="font-bold">+ Add Item</span> button to add an author, series, or book.
                 </p>
                 <button
                   onClick={() => setIsAddOpen(true)}
@@ -277,28 +259,9 @@ function TrackerMain() {
                   <span>Add New Audiobook</span>
                 </button>
               </div>
-            ) : viewMode === 'table' ? (
-              <AudiobookListView
-                books={filteredBooks}
-                selectedIds={selectedIds}
-                setSelectedIds={setSelectedIds}
-              />
-            ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-3 sm:p-4">
-                {filteredBooks.map((book) => (
-                  <AudiobookCard
-                    key={book.id}
-                    book={book}
-                    viewMode="grid"
-                    isSelected={selectedIds.includes(book.id)}
-                    onToggleSelect={handleToggleSelectBook}
-                    onSelect={(b) => setSelectedBookForDetail(b)}
-                    onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
-                  />
-                ))}
-              </div>
-            ) : viewMode === 'compact_grid' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 p-3">
+            ) : (
+              /* High-Density, Navigation-Friendly Compact Poster Grid (Only View Mode) */
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 p-3 sm:p-4">
                 {filteredBooks.map((book) => (
                   <AudiobookCard
                     key={book.id}
@@ -311,34 +274,12 @@ function TrackerMain() {
                   />
                 ))}
               </div>
-            ) : (
-              <div className="space-y-3 p-3 sm:p-4">
-                {filteredBooks.map((book) => (
-                  <AudiobookCard
-                    key={book.id}
-                    book={book}
-                    viewMode="list"
-                    isSelected={selectedIds.includes(book.id)}
-                    onToggleSelect={handleToggleSelectBook}
-                    onSelect={(b) => setSelectedBookForDetail(b)}
-                    onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
-                  />
-                ))}
-              </div>
             )}
           </PullToRefresh>
         </div>
-
-        {/* Right Side: Material Audiobook Preview Panel */}
-        <div className={`${showMobilePreview ? 'block' : 'hidden'} lg:block shrink-0`}>
-          <PreviewPanel
-            book={selectedBook}
-            onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
-          />
-        </div>
       </main>
 
-      {/* Floating Batch Action Bar (Material Action Pill) */}
+      {/* Floating Batch Action Bar (Appears when any books are selected) */}
       <FloatingBatchBar
         selectedIds={selectedIds}
         totalFilteredCount={filteredBooks.length}
@@ -352,7 +293,7 @@ function TrackerMain() {
         onOpenPreferences={() => setIsSettingsOpen(true)}
       />
 
-      {/* Hamburger Drawer Menu */}
+      {/* Hamburger Navigation Drawer */}
       <HamburgerDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
@@ -360,34 +301,38 @@ function TrackerMain() {
         onOpenSettingsModal={() => setIsSettingsOpen(true)}
       />
 
-      {/* Modals & Dialogs */}
+      {/* Add Audiobook, Series, Author, or Narrator Dialog */}
       <AddBookDialog
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
       />
 
+      {/* Settings, Watchlists & Backup Dialog */}
       <SettingsDialog
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
 
+      {/* Full Book Details, Audio Narration Sample & Alarms Modal */}
       <BookDetailModal
         book={selectedBookForDetail}
         onClose={() => setSelectedBookForDetail(null)}
         onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
       />
 
+      {/* Mark As Read / Listening Log Modal */}
       <MarkAsReadModal
         book={selectedBookForMarkRead}
         onClose={() => setSelectedBookForMarkRead(null)}
       />
 
+      {/* Release Notification Center Modal */}
       <NotificationCenterModal
         isOpen={isNotifOpen}
         onClose={() => setIsNotifOpen(false)}
       />
 
-      {/* In-app Toast Container */}
+      {/* In-app Toast Notifications */}
       <ToastContainer />
 
       <OfflineIndicator />

@@ -39,7 +39,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const {
     preferences,
     updatePreferences,
-    setViewMode,
     watchlists,
     addWatchlistTarget,
     removeWatchlistTarget,
@@ -68,38 +67,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   const [muteVal, setMuteVal] = useState('');
 
   if (!isOpen) return null;
-
-  const viewModes: Array<{
-    id: 'table' | 'grid' | 'compact_grid' | 'list';
-    label: string;
-    desc: string;
-    icon: React.ElementType;
-  }> = [
-    {
-      id: 'table',
-      label: 'Table View (Dense)',
-      desc: 'Tabular grid with sortable columns and status tracking.',
-      icon: Table,
-    },
-    {
-      id: 'grid',
-      label: 'Standard Grid',
-      desc: 'Spacious cover art cards with release badges and synopsis.',
-      icon: LayoutGrid,
-    },
-    {
-      id: 'compact_grid',
-      label: 'Compact Grid (Mobile)',
-      desc: 'Dense poster view optimized for browsing maximum books on phones.',
-      icon: Grid3X3,
-    },
-    {
-      id: 'list',
-      label: 'Expanded List',
-      desc: 'Single-column detail cards with audio sample controls.',
-      icon: List,
-    },
-  ];
 
   const searchModes: Array<{
     id: 'Title' | 'Series' | 'Author' | 'Narrator';
@@ -325,51 +292,43 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 </div>
               </div>
 
-              {/* Default View Layout */}
-              <div className="space-y-2.5">
-                <label
-                  style={{ color: 'var(--md-sys-color-primary)' }}
-                  className="text-xs font-bold uppercase tracking-wider block"
-                >
-                  Default View Layout
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {viewModes.map((vm) => {
-                    const Icon = vm.icon;
-                    const isSelected = preferences.defaultViewMode === vm.id;
-                    return (
-                      <button
-                        key={vm.id}
-                        type="button"
-                        onClick={() => {
-                          updatePreferences({ defaultViewMode: vm.id });
-                          setViewMode(vm.id);
-                        }}
-                        style={{
-                          backgroundColor: isSelected
-                            ? 'var(--md-sys-color-primary-container)'
-                            : 'var(--md-sys-color-surface-container-low)',
-                          borderColor: isSelected
-                            ? 'var(--md-sys-color-primary)'
-                            : 'var(--md-sys-color-outline-variant)',
-                          color: isSelected
-                            ? 'var(--md-sys-color-on-primary-container)'
-                            : 'var(--md-sys-color-on-surface)',
-                        }}
-                        className="p-3.5 rounded-2xl text-left border transition flex flex-col justify-between shadow-xs active:scale-98 cursor-pointer"
-                      >
-                        <div className="flex items-center justify-between w-full mb-1">
-                          <div className="flex items-center gap-2 font-bold text-xs">
-                            <Icon className="h-4 w-4" />
-                            <span>{vm.label}</span>
-                          </div>
-                          {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
-                        </div>
-                        <p className="text-[11px] opacity-75 leading-relaxed">{vm.desc}</p>
-                      </button>
-                    );
-                  })}
+              {/* Active View Layout (Compact Mode Only) */}
+              <div
+                style={{
+                  backgroundColor: 'var(--md-sys-color-surface-container-low)',
+                  borderColor: 'var(--md-sys-color-outline-variant)',
+                }}
+                className="p-3.5 rounded-2xl border flex items-center justify-between shadow-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    style={{
+                      backgroundColor: 'var(--md-sys-color-primary)',
+                      color: 'var(--md-sys-color-on-primary)',
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-xl"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold block">Active View Mode</span>
+                    <span
+                      style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                      className="text-[11px]"
+                    >
+                      Compact Poster Grid (High-density Audible release posters)
+                    </span>
+                  </div>
                 </div>
+                <span
+                  style={{
+                    backgroundColor: 'var(--md-sys-color-primary-container)',
+                    color: 'var(--md-sys-color-on-primary-container)',
+                  }}
+                  className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                >
+                  Compact Active
+                </span>
               </div>
 
               {/* Default Search Mode */}

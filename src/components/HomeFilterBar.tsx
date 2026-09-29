@@ -1,23 +1,20 @@
 import React from 'react';
 import { useTracker } from '../context/TrackerContext';
+import { getDaysUntil } from '../utils/notifications';
 import {
   Search,
   X,
-  LayoutGrid,
-  Grid3X3,
-  Table,
-  List,
   Calendar,
   CheckCircle2,
   Clock,
   DownloadCloud,
   CheckSquare,
   Square,
+  Sparkles,
+  BookOpen,
 } from 'lucide-react';
 
 interface HomeFilterBarProps {
-  viewMode: 'table' | 'grid' | 'compact_grid' | 'list';
-  setViewMode: (mode: 'table' | 'grid' | 'compact_grid' | 'list') => void;
   totalFilteredCount: number;
   selectedCount?: number;
   onToggleSelectAll?: () => void;
@@ -25,30 +22,54 @@ interface HomeFilterBarProps {
 }
 
 export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
-  viewMode,
-  setViewMode,
   totalFilteredCount,
   selectedCount = 0,
   onToggleSelectAll,
   isAllSelected = false,
 }) => {
   const {
+    books,
     searchQuery,
     setSearchQuery,
     viewFilter,
     setViewFilter,
   } = useTracker();
 
+  // Tab counts for ultra-intuitive navigation
+  const counts = React.useMemo(() => {
+    let upcoming = 0;
+    let today = 0;
+    let downloaded = 0;
+    let listened = 0;
+
+    for (const b of books) {
+      const days = getDaysUntil(b.releaseDate);
+      if (days >= 0) upcoming++;
+      if (days === 0) today++;
+      if (b.downloaded === 'Yes') downloaded++;
+      if (b.listened === 'Yes' || b.isRead) listened++;
+    }
+
+    return {
+      all: books.length,
+      upcoming,
+      today,
+      downloaded,
+      listened,
+    };
+  }, [books]);
+
   const filterTabs: Array<{
     id: 'all' | 'upcoming' | 'today' | 'downloaded' | 'listened';
     label: string;
+    count: number;
     icon?: React.ElementType;
   }> = [
-    { id: 'all', label: 'All Releases' },
-    { id: 'upcoming', label: 'Upcoming', icon: Clock },
-    { id: 'today', label: 'Releasing Today', icon: Calendar },
-    { id: 'downloaded', label: 'Downloaded', icon: DownloadCloud },
-    { id: 'listened', label: 'Listened', icon: CheckCircle2 },
+    { id: 'all', label: 'All Releases', count: counts.all, icon: BookOpen },
+    { id: 'upcoming', label: 'Upcoming', count: counts.upcoming, icon: Clock },
+    { id: 'today', label: 'Releasing Today', count: counts.today, icon: Calendar },
+    { id: 'downloaded', label: 'Downloaded', count: counts.downloaded, icon: DownloadCloud },
+    { id: 'listened', label: 'Listened', count: counts.listened, icon: CheckCircle2 },
   ];
 
   return (
@@ -59,7 +80,7 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
       }}
       className="border-b px-3 sm:px-5 py-3 space-y-3 transition-colors duration-200"
     >
-      {/* Row 1: Material 3 Search Bar Pill + Select All FAB + Segmented View Switcher */}
+      {/* Row 1: Material 3 Search Bar Pill + Select All FAB */}
       <div className="flex items-center gap-2.5">
         {/* Material 3 Search Bar Pill */}
         <div className="relative flex-1">
@@ -79,6 +100,7 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
               onClick={() => setSearchQuery('')}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full transition-transform active:scale-90 cursor-pointer"
               style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+              title="Clear search"
             >
               <X className="h-4 w-4" />
             </button>
@@ -90,7 +112,7 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
           <button
             type="button"
             onClick={onToggleSelectAll}
-            title={isAllSelected ? 'Deselect all audiobooks' : 'Select all audiobooks'}
+            title={isAllSelected ? 'Deselect all audiobooks' : 'Select all audiobooks for batch action'}
             style={{
               backgroundColor: isAllSelected
                 ? 'var(--md-sys-color-primary)'
@@ -116,64 +138,10 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
             </span>
           </button>
         )}
-
-        {/* Material 3 Segmented View Switcher */}
-        <div
-          style={{
-            backgroundColor: 'var(--md-sys-color-surface-container)',
-            borderColor: 'var(--md-sys-color-outline-variant)',
-          }}
-          className="flex items-center p-1 rounded-2xl border shrink-0 shadow-sm"
-        >
-          <button
-            onClick={() => setViewMode('grid')}
-            title="Standard Grid"
-            style={{
-              backgroundColor: viewMode === 'grid' ? 'var(--md-sys-color-primary)' : 'transparent',
-              color: viewMode === 'grid' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
-            }}
-            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl transition-all cursor-pointer font-bold"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('compact_grid')}
-            title="Compact Grid"
-            style={{
-              backgroundColor: viewMode === 'compact_grid' ? 'var(--md-sys-color-primary)' : 'transparent',
-              color: viewMode === 'compact_grid' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
-            }}
-            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl transition-all cursor-pointer font-bold"
-          >
-            <Grid3X3 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('table')}
-            title="Dense Table View"
-            style={{
-              backgroundColor: viewMode === 'table' ? 'var(--md-sys-color-primary)' : 'transparent',
-              color: viewMode === 'table' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
-            }}
-            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl transition-all cursor-pointer font-bold"
-          >
-            <Table className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            title="Expanded List"
-            style={{
-              backgroundColor: viewMode === 'list' ? 'var(--md-sys-color-primary)' : 'transparent',
-              color: viewMode === 'list' ? 'var(--md-sys-color-on-primary)' : 'var(--md-sys-color-on-surface-variant)',
-            }}
-            className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl transition-all cursor-pointer font-bold"
-          >
-            <List className="h-4 w-4" />
-          </button>
-        </div>
       </div>
 
-      {/* Row 2: Material 3 Filter Chips (Pill Shaped) + Count */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5">
+      {/* Row 2: Material 3 Filter Chips (Pill Shaped with Live Counts) */}
+      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5 scrollbar-none">
         <div className="flex items-center gap-2 shrink-0">
           {filterTabs.map((tab) => {
             const isSelected = viewFilter === tab.id;
@@ -186,6 +154,19 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
               >
                 {Icon && <Icon className="h-3.5 w-3.5" />}
                 <span>{tab.label}</span>
+                <span
+                  style={{
+                    backgroundColor: isSelected
+                      ? 'var(--md-sys-color-primary)'
+                      : 'var(--md-sys-color-surface-container-high)',
+                    color: isSelected
+                      ? 'var(--md-sys-color-on-primary)'
+                      : 'var(--md-sys-color-on-surface-variant)',
+                  }}
+                  className="px-1.5 py-0.2 rounded-full text-[10px] font-bold tabular-nums ml-0.5"
+                >
+                  {tab.count}
+                </span>
               </button>
             );
           })}
@@ -193,9 +174,9 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
 
         <div
           style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
-          className="text-xs font-semibold shrink-0 hidden sm:block tabular-nums"
+          className="text-xs font-semibold shrink-0 hidden md:block tabular-nums"
         >
-          <span style={{ color: 'var(--md-sys-color-on-surface)' }} className="font-extrabold">{totalFilteredCount}</span> audiobooks
+          Showing <span style={{ color: 'var(--md-sys-color-on-surface)' }} className="font-extrabold">{totalFilteredCount}</span> in Compact View
         </div>
       </div>
     </div>

@@ -30,7 +30,7 @@ export interface AppPreferences {
 }
 
 export const DEFAULT_PREFERENCES: AppPreferences = {
-  defaultViewMode: 'table',
+  defaultViewMode: 'compact_grid',
   defaultSearchMode: 'Title',
   defaultViewFilter: 'all',
   languageFilter: 'english_only',
@@ -210,7 +210,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
   const [timeframeFilter, setTimeframeFilter] = useState<'all' | 'today' | 'week' | 'month' | 'tracked'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'compact_grid' | 'list' | 'table'>(
-    preferences.defaultViewMode || 'table'
+    preferences.defaultViewMode || 'compact_grid'
   );
 
   const [languageFilter, setLanguageFilterState] = useState<'english_only' | 'all_languages'>(

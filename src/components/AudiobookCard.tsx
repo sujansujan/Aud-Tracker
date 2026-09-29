@@ -266,7 +266,7 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
       {/* Cover Image Container */}
       <div
         onClick={() => onSelect(book)}
-        className={`relative w-full ${isCompact ? 'aspect-[3/4]' : 'aspect-square'} overflow-hidden cursor-pointer bg-[var(--md-sys-color-surface-container)]`}
+        className="relative w-full aspect-square overflow-hidden cursor-pointer bg-[var(--md-sys-color-surface-container)]"
       >
         <img
           src={book.coverUrl}
@@ -294,22 +294,22 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
                 ? 'var(--md-sys-color-on-primary)'
                 : '#ffffff',
             }}
-            className="absolute top-3 right-3 z-20 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-2xl border shadow-lg backdrop-blur-md transition-transform active:scale-95 cursor-pointer"
+            className="absolute top-2.5 right-2.5 z-20 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border shadow-lg backdrop-blur-md transition-transform active:scale-95 cursor-pointer"
             aria-label={isSelected ? 'Deselect book' : 'Select book'}
           >
-            <Check className="h-5 w-5 stroke-[2.5]" />
+            <Check className="h-4 w-4 stroke-[2.5]" />
           </button>
         )}
 
         {/* Urgency Countdown Pill */}
-        <div className="absolute top-3 left-3 z-10">
+        <div className="absolute top-2.5 left-2.5 z-10">
           <span
             style={{
               backgroundColor: badgeStyle.bg,
               color: badgeStyle.text,
               borderColor: badgeStyle.border,
             }}
-            className="px-3 py-1 rounded-full border text-xs font-extrabold shadow-md backdrop-blur-md tabular-nums"
+            className="px-2.5 py-0.5 rounded-full border text-[11px] font-extrabold shadow-md backdrop-blur-md tabular-nums"
           >
             {countdown.badgeText}
           </span>
@@ -326,8 +326,8 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
             backgroundColor: isPlayingCurrent ? 'var(--md-sys-color-accent-pink)' : 'rgba(33, 34, 44, 0.8)',
             color: '#ffffff',
           }}
-          className="absolute bottom-3 right-3 z-10 h-10 w-10 rounded-full flex items-center justify-center shadow-md backdrop-blur-md transition-all group-hover:scale-110 active:scale-95 cursor-pointer"
-          title="Play audio preview"
+          className="absolute bottom-2.5 right-2.5 z-10 h-9 w-9 rounded-full flex items-center justify-center shadow-md backdrop-blur-md transition-all group-hover:scale-110 active:scale-95 cursor-pointer"
+          title="Play voice sample"
         >
           <Volume2 className={`h-4 w-4 ${isPlayingCurrent ? 'animate-bounce' : ''}`} />
         </button>
@@ -335,7 +335,7 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
 
       {/* Card Content */}
       <div
-        className={`flex-1 p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer space-y-2`}
+        className="flex-1 p-3 flex flex-col justify-between cursor-pointer space-y-1.5"
         onClick={() => onSelect(book)}
       >
         <div className="space-y-1">
@@ -352,21 +352,21 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
             </div>
           </div>
 
-          <h4 className="font-display font-bold text-sm sm:text-base leading-snug line-clamp-2">
+          <h4 className="font-display font-bold text-xs sm:text-sm leading-snug line-clamp-2">
             {book.title}
           </h4>
 
           <p
             style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
-            className="text-xs font-semibold truncate"
+            className="text-[11px] font-semibold truncate"
           >
             {book.author}
           </p>
 
-          {(book.seriesName || book.series?.name) && !isCompact && (
+          {(book.seriesName || book.series?.name) && (
             <p
               style={{ color: 'var(--md-sys-color-secondary)' }}
-              className="text-[11px] font-medium truncate flex items-center gap-1"
+              className="text-[10px] font-bold truncate flex items-center gap-1"
             >
               <Layers className="h-3 w-3 shrink-0" />
               <span>
