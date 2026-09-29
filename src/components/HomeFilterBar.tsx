@@ -8,24 +8,17 @@ import {
   CheckCircle2,
   Clock,
   DownloadCloud,
-  CheckSquare,
-  Square,
-  Sparkles,
   BookOpen,
 } from 'lucide-react';
 
 interface HomeFilterBarProps {
   totalFilteredCount: number;
-  selectedCount?: number;
-  onToggleSelectAll?: () => void;
-  isAllSelected?: boolean;
+  isSearchOpen: boolean;
 }
 
 export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
   totalFilteredCount,
-  selectedCount = 0,
-  onToggleSelectAll,
-  isAllSelected = false,
+  isSearchOpen,
 }) => {
   const {
     books,
@@ -78,12 +71,11 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
         backgroundColor: 'var(--md-sys-color-surface)',
         borderColor: 'var(--md-sys-color-outline-variant)',
       }}
-      className="border-b px-3 sm:px-5 py-3 space-y-3 transition-colors duration-200"
+      className="border-b px-3 sm:px-5 py-2.5 space-y-2.5 transition-colors duration-200 shrink-0"
     >
-      {/* Row 1: Material 3 Search Bar Pill + Select All FAB */}
-      <div className="flex items-center gap-2.5">
-        {/* Material 3 Search Bar Pill */}
-        <div className="relative flex-1">
+      {/* Search Bar (Toggleable on/off as requested) */}
+      {isSearchOpen && (
+        <div className="relative w-full animate-in fade-in slide-in-from-top-1 duration-150">
           <Search
             className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
             style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
@@ -93,7 +85,8 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
             placeholder="Search audiobooks, authors, series, or narrators..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="md-input w-full min-h-[46px] pl-11 pr-10 text-xs sm:text-sm font-medium"
+            className="md-input w-full min-h-[44px] pl-11 pr-10 text-xs sm:text-sm font-medium rounded-full"
+            autoFocus
           />
           {searchQuery && (
             <button
@@ -106,41 +99,9 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
             </button>
           )}
         </div>
+      )}
 
-        {/* Master Multi-Select Button (Material Tonal / Active Pill) */}
-        {onToggleSelectAll && (
-          <button
-            type="button"
-            onClick={onToggleSelectAll}
-            title={isAllSelected ? 'Deselect all audiobooks' : 'Select all audiobooks for batch action'}
-            style={{
-              backgroundColor: isAllSelected
-                ? 'var(--md-sys-color-primary)'
-                : selectedCount > 0
-                ? 'var(--md-sys-color-primary-container)'
-                : 'var(--md-sys-color-surface-container)',
-              color: isAllSelected
-                ? 'var(--md-sys-color-on-primary)'
-                : selectedCount > 0
-                ? 'var(--md-sys-color-on-primary-container)'
-                : 'var(--md-sys-color-on-surface)',
-              borderColor: 'var(--md-sys-color-outline-variant)',
-            }}
-            className="min-h-[46px] px-3.5 rounded-full border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0 active:scale-95"
-          >
-            {isAllSelected ? (
-              <CheckSquare className="h-4 w-4 stroke-[2.5]" />
-            ) : (
-              <Square className="h-4 w-4" style={{ color: 'var(--md-sys-color-on-surface-variant)' }} />
-            )}
-            <span className="hidden sm:inline">
-              {isAllSelected ? 'All Selected' : selectedCount > 0 ? `${selectedCount} Selected` : 'Select All'}
-            </span>
-          </button>
-        )}
-      </div>
-
-      {/* Row 2: Material 3 Filter Chips (Pill Shaped with Live Counts) */}
+      {/* Filter Chips (Pill Shaped with Live Counters) */}
       <div className="flex items-center justify-between gap-2 overflow-x-auto pb-0.5 scrollbar-none">
         <div className="flex items-center gap-2 shrink-0">
           {filterTabs.map((tab) => {
@@ -176,7 +137,7 @@ export const HomeFilterBar: React.FC<HomeFilterBarProps> = ({
           style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
           className="text-xs font-semibold shrink-0 hidden md:block tabular-nums"
         >
-          Showing <span style={{ color: 'var(--md-sys-color-on-surface)' }} className="font-extrabold">{totalFilteredCount}</span> in Compact View
+          <span style={{ color: 'var(--md-sys-color-on-surface)' }} className="font-extrabold">{totalFilteredCount}</span> audiobooks
         </div>
       </div>
     </div>

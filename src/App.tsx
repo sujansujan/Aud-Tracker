@@ -15,7 +15,18 @@ import { ToastContainer } from './components/ToastContainer';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { Audiobook } from './types/audiobook';
 import { getDaysUntil } from './utils/notifications';
-import { Headphones, Plus, Settings, Menu, Sun, Moon, Info } from 'lucide-react';
+import {
+  Menu,
+  Sun,
+  Moon,
+  Settings,
+  Search,
+  CheckSquare,
+  Square,
+  Plus,
+  Headphones,
+  Info,
+} from 'lucide-react';
 
 function TrackerMain() {
   const {
@@ -30,6 +41,9 @@ function TrackerMain() {
     toggleTheme,
   } = useTracker();
 
+  // Search toggle state (default on or off based on user preference)
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
   // Dialog visibility
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -38,7 +52,7 @@ function TrackerMain() {
   const [selectedBookForDetail, setSelectedBookForDetail] = useState<Audiobook | null>(null);
   const [selectedBookForMarkRead, setSelectedBookForMarkRead] = useState<Audiobook | null>(null);
 
-  // Multi-selection across all views
+  // Multi-selection across compact grid
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Filter & Sort
@@ -109,58 +123,85 @@ function TrackerMain() {
       style={{ backgroundColor: 'var(--md-sys-color-background)', color: 'var(--md-sys-color-on-surface)' }}
       className="min-h-screen flex flex-col font-sans select-none antialiased overflow-x-hidden transition-colors duration-250"
     >
-      {/* Modern Material Design 3 Top App Bar */}
+      {/* Modern Material Design 3 Minimal Top Bar (No app name, clean tools) */}
       <header
         style={{
           backgroundColor: 'var(--md-sys-color-surface)',
           borderColor: 'var(--md-sys-color-outline-variant)',
         }}
-        className="pt-safe pb-3 px-3.5 sm:px-6 flex items-center justify-between border-b shadow-sm shrink-0 z-20 transition-colors duration-200"
+        className="pt-safe pb-2.5 px-3 sm:px-5 flex items-center justify-between border-b shadow-sm shrink-0 z-20 transition-colors duration-200"
       >
-        {/* Left Side: Material Navigation Drawer Button + Clean Brand Identity */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          {/* Hamburger Menu (Large Material Touch Target with intuitive icon) */}
+        {/* Left Side: Hamburger Menu Button Only */}
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsDrawerOpen(true)}
             className="md-btn-icon shadow-xs"
             aria-label="Open navigation menu and watchlists"
-            title="Open Menu: Tracked Authors, Series, Narrators & Tools"
+            title="Menu: Tracked Authors, Series, Narrators & Tools"
           >
             <Menu className="h-5 w-5" />
           </button>
-
-          <div className="flex items-center gap-3">
-            <div
-              style={{
-                backgroundColor: 'var(--md-sys-color-primary)',
-                color: 'var(--md-sys-color-on-primary)',
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-2xl font-bold shadow-md transition-transform active:scale-95"
-            >
-              <Headphones className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="font-display text-base sm:text-lg font-extrabold tracking-tight truncate">
-                Audible Tracker
-              </h1>
-              <p
-                style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
-                className="text-[11px] font-medium hidden sm:block leading-none mt-0.5"
-              >
-                Audiobook Releases &amp; Series
-              </p>
-            </div>
-          </div>
         </div>
 
-        {/* Right Side Actions: Theme Switcher, Large + Add Button, Settings */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Right Side: Search Toggle, + Add, Select All (Near Settings), Theme Switcher, Settings */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Option to toggle search bar on or off */}
+          <button
+            onClick={() => setIsSearchOpen((prev) => !prev)}
+            className={`md-btn-icon shadow-xs transition-colors ${
+              isSearchOpen ? 'ring-2 ring-[var(--md-sys-color-primary)]' : ''
+            }`}
+            title={isSearchOpen ? 'Hide Search Bar' : 'Toggle Search Bar'}
+            aria-label="Toggle search bar on or off"
+          >
+            <Search
+              className="h-5 w-5"
+              style={{ color: isSearchOpen ? 'var(--md-sys-color-primary)' : undefined }}
+            />
+          </button>
+
+          {/* Primary + Add Button */}
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className="md-btn-fab min-h-[44px] px-3.5 sm:px-4 text-xs font-bold shadow-sm"
+            title="Add audiobook, author, series, or narrator"
+          >
+            <Plus className="h-4 w-4 stroke-[2.5]" />
+            <span className="hidden xs:inline">Add</span>
+          </button>
+
+          {/* Select All Button (Located near settings button as requested!) */}
+          <button
+            onClick={handleToggleSelectAll}
+            className="md-btn-icon shadow-xs transition-all"
+            title={
+              filteredBooks.length > 0 && selectedIds.length >= filteredBooks.length
+                ? 'Deselect All Audiobooks'
+                : 'Select All Audiobooks'
+            }
+            aria-label="Select all audiobooks"
+            style={{
+              backgroundColor:
+                selectedIds.length > 0 ? 'var(--md-sys-color-primary-container)' : undefined,
+              color:
+                selectedIds.length > 0 ? 'var(--md-sys-color-on-primary-container)' : undefined,
+              borderColor:
+                selectedIds.length > 0 ? 'var(--md-sys-color-primary)' : undefined,
+            }}
+          >
+            {filteredBooks.length > 0 && selectedIds.length >= filteredBooks.length ? (
+              <CheckSquare className="h-5 w-5" style={{ color: 'var(--md-sys-color-primary)' }} />
+            ) : (
+              <Square className="h-5 w-5" />
+            )}
+          </button>
+
           {/* Theme Mode Switcher (Alucard Light / Dracula Dark) */}
           <button
             onClick={toggleTheme}
             className="md-btn-icon shadow-xs"
             title={theme === 'dark' ? 'Switch to Alucard Light Mode' : 'Switch to Dracula Dark Mode'}
-            aria-label="Toggle light/dark theme"
+            aria-label="Toggle theme"
           >
             {theme === 'dark' ? (
               <Sun className="h-5 w-5 text-amber-300 transition-transform rotate-0 hover:rotate-45" />
@@ -169,21 +210,11 @@ function TrackerMain() {
             )}
           </button>
 
-          {/* Large Material 3 Extended Floating Action Button (FAB Style) for + Add */}
-          <button
-            onClick={() => setIsAddOpen(true)}
-            className="md-btn-fab min-h-[46px] px-4 sm:px-6 text-xs sm:text-sm shadow-md"
-            title="Add audiobook, series, author, or narrator"
-          >
-            <Plus className="h-5 w-5 stroke-[2.5]" />
-            <span>Add Item</span>
-          </button>
-
-          {/* Large Settings Button */}
+          {/* Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="md-btn-icon shadow-xs"
-            title="Settings, Watchlists & Backup"
+            title="Settings & Tools"
             aria-label="Settings"
           >
             <Settings className="h-5 w-5" style={{ color: 'var(--md-sys-color-primary)' }} />
@@ -191,15 +222,13 @@ function TrackerMain() {
         </div>
       </header>
 
-      {/* Streamlined Material 3 Home Filter & Search Bar */}
+      {/* Streamlined Material 3 Home Filter Bar (With toggleable search input) */}
       <HomeFilterBar
         totalFilteredCount={filteredBooks.length}
-        selectedCount={selectedIds.length}
-        onToggleSelectAll={handleToggleSelectAll}
-        isAllSelected={filteredBooks.length > 0 && selectedIds.length >= filteredBooks.length}
+        isSearchOpen={isSearchOpen}
       />
 
-      {/* Main Workspace (Full Width, Compact Grid Only Mode with Pull-to-Refresh) */}
+      {/* Main Workspace (Full Width, Compact Poster Grid Only with Pull-to-Refresh) */}
       <main className="flex-1 flex flex-col p-3 sm:p-5 overflow-hidden">
         <div
           style={{
@@ -220,11 +249,11 @@ function TrackerMain() {
             <div className="flex items-center gap-1.5 truncate">
               <Info className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--md-sys-color-primary)' }} />
               <span className="truncate">
-                Compact Poster View · Tap any book to view synopsis, play audio sample, or schedule alarms.
+                Compact Poster View · Tap any book to view synopsis, sample player &amp; alarms.
               </span>
             </div>
             <span className="hidden md:inline font-semibold text-[11px] shrink-0 ml-2">
-              Pull down to check for new releases
+              Pull down to refresh catalog
             </span>
           </div>
 
@@ -249,7 +278,7 @@ function TrackerMain() {
                   style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
                   className="text-xs max-w-sm mb-6 leading-relaxed"
                 >
-                  Try selecting "All Releases" above, or tap the <span style={{ color: 'var(--md-sys-color-primary)' }} className="font-bold">+ Add Item</span> button to add an author, series, or book.
+                  Try selecting "All Releases" above, or tap the <span style={{ color: 'var(--md-sys-color-primary)' }} className="font-bold">+ Add</span> button to add an author, series, or book.
                 </p>
                 <button
                   onClick={() => setIsAddOpen(true)}
@@ -260,7 +289,7 @@ function TrackerMain() {
                 </button>
               </div>
             ) : (
-              /* High-Density, Navigation-Friendly Compact Poster Grid (Only View Mode) */
+              /* High-Density Compact Poster Grid */
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 p-3 sm:p-4">
                 {filteredBooks.map((book) => (
                   <AudiobookCard
@@ -307,13 +336,13 @@ function TrackerMain() {
         onClose={() => setIsAddOpen(false)}
       />
 
-      {/* Settings, Watchlists & Backup Dialog */}
+      {/* Settings, Watchlists & Backup Dialog (Vertical Navigation) */}
       <SettingsDialog
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
 
-      {/* Full Book Details, Audio Narration Sample & Alarms Modal */}
+      {/* Full Book Details, Narration Sample & Alarms Modal */}
       <BookDetailModal
         book={selectedBookForDetail}
         onClose={() => setSelectedBookForDetail(null)}
