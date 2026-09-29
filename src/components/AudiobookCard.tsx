@@ -136,6 +136,7 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
             isSelected ? 'opacity-90 brightness-95' : ''
           }`}
           loading="lazy"
+          decoding="async"
         />
 
         {/* Selected Overlay Indicator (Native Android tint without tick button) */}

@@ -116,9 +116,16 @@
     color: var(--md-sys-color-on-surface);
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
     user-select: none;
     overscroll-behavior-y: none;
+    text-rendering: optimizeLegibility;
     transition: background-color 0.25s cubic-bezier(0.2, 0, 0, 1), color 0.25s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* Zero lag on mobile: lazy decode and prevent layout shift */
+  img {
+    content-visibility: auto;
   }
 
   h1, h2, h3, h4, .font-display {
