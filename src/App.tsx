@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrackerProvider, useTracker } from './context/TrackerContext';
-import { HomeFilterBar } from './components/HomeFilterBar';
 import { PullToRefresh } from './components/PullToRefresh';
 import { StatusBar } from './components/StatusBar';
 import { AddBookDialog } from './components/AddBookDialog';
@@ -13,8 +12,9 @@ import { MarkAsReadModal } from './components/MarkAsReadModal';
 import { FloatingBatchBar } from './components/FloatingBatchBar';
 import { ToastContainer } from './components/ToastContainer';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { SortMenu, SortOption } from './components/SortMenu';
 import { Audiobook } from './types/audiobook';
-import { getDaysUntil } from './utils/notifications';
+import { getDaysUntil, initNativeAndroidChannel } from './utils/notifications';
 import {
   Menu,
   Sun,
@@ -26,15 +26,18 @@ import {
   Plus,
   Headphones,
   Info,
+  X,
 } from 'lucide-react';
 
 function TrackerMain() {
   const {
     books,
     searchQuery,
+    setSearchQuery,
     selectedGenre,
     minRating,
     viewFilter,
+    setViewFilter,
     runScheduledScan,
     isScanning,
     theme,
@@ -44,6 +47,9 @@ function TrackerMain() {
   // Search toggle state (default on or off based on user preference)
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  // Top Bar Sort State (Next to Add button)
+  const [sortBy, setSortBy] = useState<SortOption>('release_soonest');
+
   // Dialog visibility
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -52,8 +58,13 @@ function TrackerMain() {
   const [selectedBookForDetail, setSelectedBookForDetail] = useState<Audiobook | null>(null);
   const [selectedBookForMarkRead, setSelectedBookForMarkRead] = useState<Audiobook | null>(null);
 
-  // Multi-selection across compact grid
+  // Multi-selection across compact grid (Native Android long-press driven)
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Initialize native Android notification channel
+  useEffect(() => {
+    initNativeAndroidChannel();
+  }, []);
 
   // Filter & Sort
   const filteredBooks = books
@@ -87,16 +98,40 @@ function TrackerMain() {
       return true;
     })
     .sort((a, b) => {
+      if (sortBy === 'release_newest') {
+        return b.releaseDate.localeCompare(a.releaseDate);
+      }
+      if (sortBy === 'release_oldest') {
+        return a.releaseDate.localeCompare(b.releaseDate);
+      }
+      if (sortBy === 'title_asc') {
+        return a.title.localeCompare(b.title);
+      }
+      if (sortBy === 'title_desc') {
+        return b.title.localeCompare(a.title);
+      }
+      if (sortBy === 'author_asc') {
+        return a.author.localeCompare(b.author);
+      }
+      if (sortBy === 'rating_desc') {
+        return b.audibleRating - a.audibleRating;
+      }
+      if (sortBy === 'duration_desc') {
+        return (b.runtimeHours || 0) - (a.runtimeHours || 0);
+      }
+      if (sortBy === 'duration_asc') {
+        return (a.runtimeHours || 0) - (b.runtimeHours || 0);
+      }
+
+      // Default: release_soonest (upcoming soonest first, then past releases newest first)
       const daysA = getDaysUntil(a.releaseDate);
       const daysB = getDaysUntil(b.releaseDate);
       const isUpA = daysA >= 0;
       const isUpB = daysB >= 0;
 
-      // Upcoming releases first, sorted by soonest
       if (isUpA && !isUpB) return -1;
       if (!isUpA && isUpB) return 1;
       if (isUpA && isUpB) return daysA - daysB;
-      // Past releases sorted newest first
       return daysB - daysA;
     });
 
@@ -117,6 +152,17 @@ function TrackerMain() {
       setSelectedIds(filteredBooks.map((b) => b.id));
     }
   };
+
+  const activeFilterLabel =
+    viewFilter === 'upcoming'
+      ? 'Upcoming Only'
+      : viewFilter === 'today'
+      ? 'Releasing Today'
+      : viewFilter === 'downloaded'
+      ? 'Downloaded'
+      : viewFilter === 'listened'
+      ? 'Listened'
+      : null;
 
   return (
     <div
@@ -143,7 +189,7 @@ function TrackerMain() {
           </button>
         </div>
 
-        {/* Right Side: Search Toggle, + Add, Select All (Near Settings), Theme Switcher, Settings */}
+        {/* Right Side: Search Toggle, Sort & Filter (Next to Add), + Add, Select All (Near Settings), Theme Switcher, Settings */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Option to toggle search bar on or off */}
           <button
@@ -160,6 +206,12 @@ function TrackerMain() {
             />
           </button>
 
+          {/* Sort & Filter Option at Top of the App Next to Add Button (Contains All Releases, Upcoming, Downloaded, etc.) */}
+          <SortMenu
+            currentSort={sortBy}
+            onSelectSort={setSortBy}
+          />
+
           {/* Primary + Add Button */}
           <button
             onClick={() => setIsAddOpen(true)}
@@ -170,7 +222,7 @@ function TrackerMain() {
             <span className="hidden xs:inline">Add</span>
           </button>
 
-          {/* Select All Button (Located near settings button as requested!) */}
+          {/* Select All Button (Located near settings button as requested) */}
           <button
             onClick={handleToggleSelectAll}
             className="md-btn-icon shadow-xs transition-all"
@@ -222,11 +274,41 @@ function TrackerMain() {
         </div>
       </header>
 
-      {/* Streamlined Material 3 Home Filter Bar (With toggleable search input) */}
-      <HomeFilterBar
-        totalFilteredCount={filteredBooks.length}
-        isSearchOpen={isSearchOpen}
-      />
+      {/* Sleek Expandable Search Bar (When toggled on via Search icon) */}
+      {isSearchOpen && (
+        <div
+          style={{
+            backgroundColor: 'var(--md-sys-color-surface)',
+            borderColor: 'var(--md-sys-color-outline-variant)',
+          }}
+          className="border-b px-3.5 sm:px-6 py-2.5 animate-in fade-in slide-in-from-top-1 duration-150 shrink-0"
+        >
+          <div className="relative w-full max-w-2xl mx-auto">
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none"
+              style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            />
+            <input
+              type="text"
+              placeholder="Search audiobooks, authors, series, or narrators..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="md-input w-full min-h-[44px] pl-11 pr-10 text-xs sm:text-sm font-medium rounded-full"
+              autoFocus
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full transition-transform active:scale-90 cursor-pointer"
+                style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+                title="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Main Workspace (Full Width, Compact Poster Grid Only with Pull-to-Refresh) */}
       <main className="flex-1 flex flex-col p-3 sm:p-5 overflow-hidden">
@@ -246,15 +328,34 @@ function TrackerMain() {
             }}
             className="px-4 py-2 border-b text-xs flex items-center justify-between shrink-0"
           >
-            <div className="flex items-center gap-1.5 truncate">
+            <div className="flex items-center gap-2 truncate">
               <Info className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--md-sys-color-primary)' }} />
               <span className="truncate">
-                Compact Poster View · Tap any book to view synopsis, sample player &amp; alarms.
+                Showing {filteredBooks.length} audiobooks
+                {activeFilterLabel && (
+                  <span className="ml-1.5 font-bold" style={{ color: 'var(--md-sys-color-primary)' }}>
+                    ({activeFilterLabel})
+                  </span>
+                )}
+                {' '}· Long-press to select · Tap for details
               </span>
             </div>
-            <span className="hidden md:inline font-semibold text-[11px] shrink-0 ml-2">
-              Pull down to refresh catalog
-            </span>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {activeFilterLabel && (
+                <button
+                  type="button"
+                  onClick={() => setViewFilter('all')}
+                  style={{ color: 'var(--md-sys-color-primary)' }}
+                  className="font-bold text-[11px] hover:underline cursor-pointer"
+                >
+                  Clear Filter
+                </button>
+              )}
+              <span className="hidden md:inline font-semibold text-[11px]">
+                Pull down to refresh
+              </span>
+            </div>
           </div>
 
           <PullToRefresh
@@ -278,18 +379,30 @@ function TrackerMain() {
                   style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
                   className="text-xs max-w-sm mb-6 leading-relaxed"
                 >
-                  Try selecting "All Releases" above, or tap the <span style={{ color: 'var(--md-sys-color-primary)' }} className="font-bold">+ Add</span> button to add an author, series, or book.
+                  {activeFilterLabel
+                    ? `Currently filtered by "${activeFilterLabel}". Try resetting the filter from the Sort & Filter button at the top.`
+                    : 'Tap the + Add button at the top to add an author, series, or book.'}
                 </p>
-                <button
-                  onClick={() => setIsAddOpen(true)}
-                  className="md-btn-fab min-h-[46px] px-6 text-sm"
-                >
-                  <Plus className="h-4 w-4 stroke-[2.5]" />
-                  <span>Add New Audiobook</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {activeFilterLabel && (
+                    <button
+                      onClick={() => setViewFilter('all')}
+                      className="md-btn-outlined min-h-[44px] px-4 text-xs font-bold"
+                    >
+                      Show All Releases
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsAddOpen(true)}
+                    className="md-btn-fab min-h-[44px] px-5 text-xs font-bold"
+                  >
+                    <Plus className="h-4 w-4 stroke-[2.5]" />
+                    <span>Add New Item</span>
+                  </button>
+                </div>
               </div>
             ) : (
-              /* High-Density Compact Poster Grid */
+              /* Native Android Long-Press Enabled Compact Poster Grid */
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 p-3 sm:p-4">
                 {filteredBooks.map((book) => (
                   <AudiobookCard
@@ -297,6 +410,7 @@ function TrackerMain() {
                     book={book}
                     viewMode="compact_grid"
                     isSelected={selectedIds.includes(book.id)}
+                    isSelectionActive={selectedIds.length > 0}
                     onToggleSelect={handleToggleSelectBook}
                     onSelect={(b) => setSelectedBookForDetail(b)}
                     onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
@@ -342,7 +456,7 @@ function TrackerMain() {
         onClose={() => setIsSettingsOpen(false)}
       />
 
-      {/* Full Book Details, Narration Sample & Alarms Modal */}
+      {/* Full Book Details Modal (No audio preview, no triggers schedule) */}
       <BookDetailModal
         book={selectedBookForDetail}
         onClose={() => setSelectedBookForDetail(null)}

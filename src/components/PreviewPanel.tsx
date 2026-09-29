@@ -2,7 +2,7 @@ import React from 'react';
 import { Audiobook } from '../types/audiobook';
 import { useTracker } from '../context/TrackerContext';
 import { getDaysUntil } from '../utils/notifications';
-import { Headphones, Play, Square, ExternalLink, DownloadCloud, CheckCircle, Bell, Star } from 'lucide-react';
+import { Headphones, ExternalLink, DownloadCloud, CheckCircle, Star } from 'lucide-react';
 
 interface PreviewPanelProps {
   book: Audiobook | null;
@@ -10,7 +10,7 @@ interface PreviewPanelProps {
 }
 
 export const PreviewPanel: React.FC<PreviewPanelProps> = ({ book, onOpenMarkRead }) => {
-  const { toggleField, toggleAudioPreview, activeAudio, toggleReminder } = useTracker();
+  const { toggleField } = useTracker();
 
   if (!book) {
     return (
@@ -32,7 +32,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ book, onOpenMarkRead
           style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
           className="text-[11px] mt-1 max-w-[200px]"
         >
-          Select any audiobook from the catalog to view high-res artwork, sample player, and quick controls.
+          Select any audiobook from the catalog to view details and controls.
         </p>
       </div>
     );
@@ -53,7 +53,6 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ book, onOpenMarkRead
     dateColor = 'var(--md-sys-color-on-surface-variant)';
   }
 
-  const isPlaying = activeAudio.isPlaying && activeAudio.bookId === book.id;
   const seriesText = book.seriesName && book.seriesName !== '—' ? `Series: ${book.seriesName}` : 'Standalone Title';
   const narratorText = book.narrator || book.narrators.join(', ') || '—';
 
@@ -75,7 +74,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ book, onOpenMarkRead
             style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
             className="text-[11px] font-extrabold uppercase tracking-wider"
           >
-            Audiobook Preview
+            Audiobook Details
           </span>
           <span
             style={{
@@ -88,131 +87,104 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ book, onOpenMarkRead
           </span>
         </div>
 
-        {/* Square Cover Art with audio play button */}
-        <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] shadow-md group">
+        {/* Artwork */}
+        <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-md mb-3.5 bg-[var(--md-sys-color-surface-container)]">
           <img
             src={book.coverUrl}
             alt={book.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
+            className="w-full h-full object-cover"
           />
-
-          <button
-            onClick={() => toggleAudioPreview(book.id)}
-            title={isPlaying ? 'Stop sample' : 'Play voice sample'}
-            style={{
-              backgroundColor: isPlaying ? 'var(--md-sys-color-accent-pink)' : 'var(--md-sys-color-primary)',
-              color: 'var(--md-sys-color-on-primary)',
-            }}
-            className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-2xl shadow-lg transition-transform active:scale-90 cursor-pointer"
-          >
-            {isPlaying ? <Square className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
-          </button>
         </div>
 
-        {/* Title, Series, Author, Date */}
-        <div className="mt-3.5 space-y-1.5">
-          <h3 className="font-display text-base font-bold line-clamp-2" title={book.title}>
+        {/* Info */}
+        <div className="space-y-1">
+          <h3 className="font-display text-sm font-bold leading-snug line-clamp-2">
             {book.title}
           </h3>
-
           <p
-            style={{ color: 'var(--md-sys-color-secondary)' }}
-            className="text-xs font-semibold truncate"
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            className="text-xs font-semibold"
+          >
+            By {book.author}
+          </p>
+          <p
+            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+            className="text-[11px] truncate opacity-85"
+          >
+            Voice: {narratorText}
+          </p>
+          <p
+            style={{ color: 'var(--md-sys-color-primary)' }}
+            className="text-[11px] font-medium truncate"
           >
             {seriesText}
           </p>
+        </div>
 
-          <p
-            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
-            className="text-xs"
-          >
-            By <strong style={{ color: 'var(--md-sys-color-on-surface)' }}>{book.author}</strong>
-          </p>
-
-          <p
-            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
-            className="text-xs truncate"
-          >
-            Voice: <span>{narratorText}</span>
-          </p>
-
-          <div className="pt-2 flex items-center justify-between text-xs">
-            <span className="tabular-nums font-bold" style={{ color: dateColor }}>
-              {dateText}
-            </span>
+        {/* Rating and Release Date */}
+        <div className="pt-2.5 border-t border-[var(--md-sys-color-outline-variant)] mt-3 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1 font-bold" style={{ color: 'var(--md-sys-color-accent-yellow)' }}>
+            <Star className="h-3.5 w-3.5 fill-current" />
+            <span>{book.audibleRating.toFixed(1)}</span>
             <span
-              style={{ color: 'var(--md-sys-color-accent-yellow)' }}
-              className="flex items-center gap-1 font-bold tabular-nums"
+              style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
+              className="text-[10px] font-normal"
             >
-              <Star className="h-3.5 w-3.5 fill-current" />
-              <span>{book.audibleRating.toFixed(1)}</span>
+              ({book.ratingCount.toLocaleString()})
             </span>
           </div>
+          <span style={{ color: dateColor }} className="font-bold text-[11px]">
+            {dateText}
+          </span>
         </div>
       </div>
 
-      {/* Quick Action Buttons */}
+      {/* Quick Status Actions */}
       <div className="space-y-2 pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
-        <div className="grid grid-cols-2 gap-2">
-          {/* Downloaded Toggle */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
           <button
             onClick={() => toggleField(book.id, 'downloaded')}
             style={{
-              backgroundColor:
-                book.downloaded === 'Yes'
-                  ? 'var(--md-sys-color-accent-green-container)'
-                  : 'var(--md-sys-color-surface-container)',
-              color:
-                book.downloaded === 'Yes'
-                  ? 'var(--md-sys-color-accent-green)'
-                  : 'var(--md-sys-color-on-surface)',
-              borderColor: 'var(--md-sys-color-outline-variant)',
+              backgroundColor: book.downloaded === 'Yes'
+                ? 'var(--md-sys-color-accent-green-container)'
+                : 'var(--md-sys-color-surface-container)',
+              color: book.downloaded === 'Yes'
+                ? 'var(--md-sys-color-accent-green)'
+                : 'var(--md-sys-color-on-surface-variant)',
             }}
-            className="min-h-[42px] px-2.5 rounded-2xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 shadow-xs"
+            className="p-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] font-bold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-xs"
           >
-            <DownloadCloud className="h-4 w-4" />
-            <span>{book.downloaded === 'Yes' ? 'DL: Yes' : 'DL: No'}</span>
+            <DownloadCloud className="h-3.5 w-3.5" />
+            <span>{book.downloaded === 'Yes' ? 'Downloaded' : 'Download'}</span>
           </button>
 
-          {/* Listened Toggle */}
           <button
             onClick={() => toggleField(book.id, 'listened')}
             style={{
-              backgroundColor:
-                book.listened === 'Yes' || book.isRead
-                  ? 'var(--md-sys-color-primary-container)'
-                  : 'var(--md-sys-color-surface-container)',
-              color:
-                book.listened === 'Yes' || book.isRead
-                  ? 'var(--md-sys-color-on-primary-container)'
-                  : 'var(--md-sys-color-on-surface)',
-              borderColor: 'var(--md-sys-color-outline-variant)',
+              backgroundColor: book.listened === 'Yes'
+                ? 'var(--md-sys-color-primary-container)'
+                : 'var(--md-sys-color-surface-container)',
+              color: book.listened === 'Yes'
+                ? 'var(--md-sys-color-on-primary-container)'
+                : 'var(--md-sys-color-on-surface-variant)',
             }}
-            className="min-h-[42px] px-2.5 rounded-2xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 shadow-xs"
+            className="p-2 rounded-xl border border-[var(--md-sys-color-outline-variant)] font-bold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-xs"
           >
-            <CheckCircle className="h-4 w-4" />
-            <span>{book.listened === 'Yes' || book.isRead ? 'Listened' : 'Unread'}</span>
+            <CheckCircle className="h-3.5 w-3.5" />
+            <span>{book.listened === 'Yes' ? 'Listened' : 'Mark Read'}</span>
           </button>
         </div>
 
-        {/* Audible Link Button */}
-        {(book.url || book.audibleUrl) && (
+        {book.audibleUrl && (
           <a
-            href={book.url || book.audibleUrl}
+            href={book.audibleUrl}
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              backgroundColor: 'var(--md-sys-color-surface-container)',
-              borderColor: 'var(--md-sys-color-outline-variant)',
-              color: 'var(--md-sys-color-primary)',
-            }}
-            className="w-full min-h-[42px] rounded-2xl border text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[var(--md-sys-color-surface-container-high)] transition shadow-xs"
+            style={{ color: 'var(--md-sys-color-primary)' }}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold p-2 rounded-xl hover:bg-[var(--md-sys-color-surface-container)] transition"
           >
-            <ExternalLink className="h-4 w-4" />
-            <span>View on Audible Store</span>
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span>View on Audible.com</span>
           </a>
         )}
       </div>

@@ -1,49 +1,76 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Audiobook } from '../types/audiobook';
-import { useTracker } from '../context/TrackerContext';
+import { getReleaseCountdown, formatReleaseDateFriendly } from '../utils/notifications';
 import {
+  Star,
   Calendar,
-  Clock,
+  Layers,
   DownloadCloud,
   CheckCircle,
-  ExternalLink,
-  Volume2,
-  Sparkles,
-  BookOpen,
-  User,
-  Layers,
-  Star,
-  Mic,
-  Check,
 } from 'lucide-react';
-import { getReleaseCountdown, formatReleaseDateFriendly } from '../utils/notifications';
 
 interface AudiobookCardProps {
   book: Audiobook;
-  viewMode: 'grid' | 'compact_grid' | 'list';
-  onSelect: (book: Audiobook) => void;
-  onOpenMarkRead: (book: Audiobook) => void;
   isSelected?: boolean;
+  isSelectionActive?: boolean;
   onToggleSelect?: (id: string) => void;
+  onSelect: (book: Audiobook) => void;
+  onOpenMarkRead?: (book: Audiobook) => void;
+  viewMode?: 'compact_grid' | 'grid' | 'table' | 'list';
 }
 
 export const AudiobookCard: React.FC<AudiobookCardProps> = ({
   book,
-  viewMode,
-  onSelect,
-  onOpenMarkRead,
   isSelected = false,
+  isSelectionActive = false,
   onToggleSelect,
+  onSelect,
 }) => {
-  const { toggleReminder, activeAudio, toggleAudioPreview, isEntityTracked } = useTracker();
   const countdown = getReleaseCountdown(book.releaseDate);
 
-  const isAuthorTracked = isEntityTracked('author', book.author);
-  const isSeriesTracked = book.series ? isEntityTracked('series', book.series.name) : false;
+  // Native Android Long-Press Gesture state
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressFiredRef = useRef(false);
 
-  const isPlayingCurrent = activeAudio.isPlaying && activeAudio.bookId === book.id;
+  const startPress = (e: React.PointerEvent) => {
+    // Only primary mouse button or touch
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    longPressFiredRef.current = false;
 
-  // Release status badge style (Material 3 pill)
+    timerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(45);
+        } catch {}
+      }
+      onToggleSelect?.(book.id);
+    }, 420); // 420ms Android standard long-press duration
+  };
+
+  const cancelPress = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // If this click resulted from long-press release, do not trigger normal tap
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+
+    // In native Android multi-select mode: tap toggles item selection
+    if (isSelectionActive) {
+      onToggleSelect?.(book.id);
+    } else {
+      onSelect(book);
+    }
+  };
+
+  // Release status badge style
   const getBadgeStyle = () => {
     if (countdown.isToday) {
       return {
@@ -75,182 +102,17 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
 
   const badgeStyle = getBadgeStyle();
 
-  // -------------------------------------------------------------
-  // LIST VIEW (Expanded Card Row)
-  // -------------------------------------------------------------
-  if (viewMode === 'list') {
-    return (
-      <div
-        style={{
-          backgroundColor: isSelected
-            ? 'var(--md-sys-color-primary-container)'
-            : 'var(--md-sys-color-surface)',
-          borderColor: isSelected
-            ? 'var(--md-sys-color-primary)'
-            : 'var(--md-sys-color-outline-variant)',
-        }}
-        className={`group relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-3xl border transition-all duration-200 shadow-sm hover:shadow-md ${
-          isSelected ? 'ring-2 ring-[var(--md-sys-color-primary)]' : ''
-        }`}
-      >
-        {/* Selection Checkbox */}
-        {onToggleSelect && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect(book.id);
-            }}
-            style={{
-              backgroundColor: isSelected
-                ? 'var(--md-sys-color-primary)'
-                : 'var(--md-sys-color-surface-container)',
-              borderColor: isSelected
-                ? 'var(--md-sys-color-primary)'
-                : 'var(--md-sys-color-outline-variant)',
-              color: isSelected
-                ? 'var(--md-sys-color-on-primary)'
-                : 'var(--md-sys-color-on-surface-variant)',
-            }}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl border transition-transform active:scale-95 cursor-pointer shrink-0 shadow-sm"
-            aria-label={isSelected ? 'Deselect book' : 'Select book'}
-          >
-            <Check className="h-5 w-5 stroke-[2.5]" />
-          </button>
-        )}
-
-        {/* Cover Thumbnail with Audio Sample Play Button */}
-        <div
-          onClick={() => onSelect(book)}
-          className="relative h-24 w-24 sm:h-28 sm:w-28 rounded-2xl overflow-hidden shrink-0 cursor-pointer shadow-md group/cover"
-        >
-          <img
-            src={book.coverUrl}
-            alt={book.title}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover/cover:scale-105"
-            loading="lazy"
-          />
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleAudioPreview(book.id);
-            }}
-            style={{
-              backgroundColor: isPlayingCurrent ? 'var(--md-sys-color-accent-pink)' : 'rgba(40, 42, 54, 0.75)',
-              color: '#ffffff',
-            }}
-            className="absolute inset-0 m-auto h-11 w-11 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-all group-hover/cover:scale-110 active:scale-95 cursor-pointer"
-            title="Preview Audio Sample"
-          >
-            <Volume2 className={`h-5 w-5 ${isPlayingCurrent ? 'animate-bounce' : ''}`} />
-          </button>
-        </div>
-
-        {/* Details Column */}
-        <div className="flex-1 min-w-0 space-y-1.5 cursor-pointer" onClick={() => onSelect(book)}>
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              style={{
-                backgroundColor: badgeStyle.bg,
-                color: badgeStyle.text,
-                borderColor: badgeStyle.border,
-              }}
-              className="px-3 py-1 rounded-full text-xs font-bold border shadow-xs"
-            >
-              {countdown.badgeText}
-            </span>
-            <span
-              style={{
-                backgroundColor: 'var(--md-sys-color-surface-container)',
-                color: 'var(--md-sys-color-on-surface-variant)',
-              }}
-              className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
-            >
-              {book.genre}
-            </span>
-          </div>
-
-          <h3 className="font-display font-bold text-base sm:text-lg tracking-tight truncate">
-            {book.title}
-          </h3>
-
-          <div
-            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
-            className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs"
-          >
-            <span className="flex items-center gap-1 font-semibold">
-              <User className="h-3.5 w-3.5" style={{ color: 'var(--md-sys-color-primary)' }} />
-              <span>{book.author}</span>
-            </span>
-            {(book.seriesName || book.series?.name) && (
-              <span className="flex items-center gap-1 font-medium">
-                <Layers className="h-3.5 w-3.5" style={{ color: 'var(--md-sys-color-secondary)' }} />
-                <span>
-                  {book.seriesName || book.series?.name}{' '}
-                  {book.series?.bookNumber ? `#${book.series.bookNumber}` : ''}
-                </span>
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <Mic className="h-3.5 w-3.5 opacity-70" />
-              <span>{book.narrator || book.narrators.join(', ')}</span>
-            </span>
-          </div>
-
-          <p
-            style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
-            className="text-xs line-clamp-2 leading-relaxed opacity-90"
-          >
-            {book.synopsis}
-          </p>
-        </div>
-
-        {/* Action Pills */}
-        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--md-sys-color-outline-variant)]">
-          <div className="flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--md-sys-color-accent-yellow)' }}>
-            <Star className="h-4 w-4 fill-current" />
-            <span>{book.audibleRating.toFixed(1)}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {book.downloaded === 'Yes' && (
-              <span
-                style={{
-                  backgroundColor: 'var(--md-sys-color-accent-green-container)',
-                  color: 'var(--md-sys-color-accent-green)',
-                }}
-                className="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1"
-              >
-                <DownloadCloud className="h-3.5 w-3.5" />
-                <span>Downloaded</span>
-              </span>
-            )}
-            {book.listened === 'Yes' && (
-              <span
-                style={{
-                  backgroundColor: 'var(--md-sys-color-primary-container)',
-                  color: 'var(--md-sys-color-on-primary-container)',
-                }}
-                className="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1"
-              >
-                <CheckCircle className="h-3.5 w-3.5" />
-                <span>Listened</span>
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // -------------------------------------------------------------
-  // GRID & COMPACT GRID VIEW (Material 3 Elevated Card)
-  // -------------------------------------------------------------
-  const isCompact = viewMode === 'compact_grid';
-
   return (
     <div
+      onPointerDown={startPress}
+      onPointerUp={cancelPress}
+      onPointerLeave={cancelPress}
+      onPointerCancel={cancelPress}
+      onClick={handleClick}
+      onContextMenu={(e) => {
+        // Prevent default browser right-click / callout menu to allow smooth long-press on mobile
+        e.preventDefault();
+      }}
       style={{
         backgroundColor: isSelected
           ? 'var(--md-sys-color-primary-container)'
@@ -259,50 +121,43 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
           ? 'var(--md-sys-color-primary)'
           : 'var(--md-sys-color-outline-variant)',
       }}
-      className={`group relative flex flex-col rounded-3xl border overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md ${
-        isSelected ? 'ring-2 ring-[var(--md-sys-color-primary)]' : ''
+      className={`group relative flex flex-col rounded-3xl border overflow-hidden transition-all duration-150 select-none cursor-pointer ${
+        isSelected
+          ? 'ring-3 ring-[var(--md-sys-color-primary)] shadow-md scale-[0.98]'
+          : 'hover:shadow-md active:scale-[0.99]'
       }`}
     >
       {/* Cover Image Container */}
-      <div
-        onClick={() => onSelect(book)}
-        className="relative w-full aspect-square overflow-hidden cursor-pointer bg-[var(--md-sys-color-surface-container)]"
-      >
+      <div className="relative w-full aspect-square overflow-hidden bg-[var(--md-sys-color-surface-container)]">
         <img
           src={book.coverUrl}
           alt={book.title}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className={`h-full w-full object-cover transition-transform duration-200 group-hover:scale-105 pointer-events-none ${
+            isSelected ? 'opacity-90 brightness-95' : ''
+          }`}
           loading="lazy"
         />
 
-        {/* Selection Checkbox */}
-        {onToggleSelect && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect(book.id);
-            }}
-            style={{
-              backgroundColor: isSelected
-                ? 'var(--md-sys-color-primary)'
-                : 'rgba(33, 34, 44, 0.75)',
-              borderColor: isSelected
-                ? 'var(--md-sys-color-primary)'
-                : 'rgba(255, 255, 255, 0.3)',
-              color: isSelected
-                ? 'var(--md-sys-color-on-primary)'
-                : '#ffffff',
-            }}
-            className="absolute top-2.5 right-2.5 z-20 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border shadow-lg backdrop-blur-md transition-transform active:scale-95 cursor-pointer"
-            aria-label={isSelected ? 'Deselect book' : 'Select book'}
+        {/* Selected Overlay Indicator (Native Android tint without tick button) */}
+        {isSelected && (
+          <div
+            style={{ backgroundColor: 'rgba(123, 63, 228, 0.25)' }}
+            className="absolute inset-0 pointer-events-none backdrop-blur-[1px] flex items-center justify-center animate-in fade-in duration-100"
           >
-            <Check className="h-4 w-4 stroke-[2.5]" />
-          </button>
+            <div
+              style={{
+                backgroundColor: 'var(--md-sys-color-primary)',
+                color: 'var(--md-sys-color-on-primary)',
+              }}
+              className="px-3 py-1 rounded-full text-[11px] font-extrabold shadow-lg uppercase tracking-wider"
+            >
+              Selected
+            </div>
+          </div>
         )}
 
         {/* Urgency Countdown Pill */}
-        <div className="absolute top-2.5 left-2.5 z-10">
+        <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
           <span
             style={{
               backgroundColor: badgeStyle.bg,
@@ -314,30 +169,10 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
             {countdown.badgeText}
           </span>
         </div>
-
-        {/* Play Audio Sample Preview Button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleAudioPreview(book.id);
-          }}
-          style={{
-            backgroundColor: isPlayingCurrent ? 'var(--md-sys-color-accent-pink)' : 'rgba(33, 34, 44, 0.8)',
-            color: '#ffffff',
-          }}
-          className="absolute bottom-2.5 right-2.5 z-10 h-9 w-9 rounded-full flex items-center justify-center shadow-md backdrop-blur-md transition-all group-hover:scale-110 active:scale-95 cursor-pointer"
-          title="Play voice sample"
-        >
-          <Volume2 className={`h-4 w-4 ${isPlayingCurrent ? 'animate-bounce' : ''}`} />
-        </button>
       </div>
 
       {/* Card Content */}
-      <div
-        className="flex-1 p-3 flex flex-col justify-between cursor-pointer space-y-1.5"
-        onClick={() => onSelect(book)}
-      >
+      <div className="flex-1 p-3 flex flex-col justify-between space-y-1.5">
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[11px]">
             <span
@@ -346,7 +181,10 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
             >
               {book.genre}
             </span>
-            <div className="flex items-center gap-1 font-bold" style={{ color: 'var(--md-sys-color-accent-yellow)' }}>
+            <div
+              className="flex items-center gap-1 font-bold"
+              style={{ color: 'var(--md-sys-color-accent-yellow)' }}
+            >
               <Star className="h-3.5 w-3.5 fill-current" />
               <span>{book.audibleRating.toFixed(1)}</span>
             </div>
@@ -377,7 +215,7 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
           )}
         </div>
 
-        {/* Card Footer: Status Badges */}
+        {/* Card Footer: Release Date & Downloaded/Listened Indicators */}
         <div className="flex items-center justify-between pt-2 border-t border-[var(--md-sys-color-outline-variant)] text-[11px]">
           <span
             style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
@@ -394,7 +232,7 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
                   backgroundColor: 'var(--md-sys-color-accent-green-container)',
                   color: 'var(--md-sys-color-accent-green)',
                 }}
-                className="px-2 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-0.5"
+                className="px-1.5 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-0.5"
                 title="Downloaded"
               >
                 <DownloadCloud className="h-3 w-3" />
@@ -406,7 +244,7 @@ export const AudiobookCard: React.FC<AudiobookCardProps> = ({
                   backgroundColor: 'var(--md-sys-color-primary-container)',
                   color: 'var(--md-sys-color-on-primary-container)',
                 }}
-                className="px-2 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-0.5"
+                className="px-1.5 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-0.5"
                 title="Listened"
               >
                 <CheckCircle className="h-3 w-3" />

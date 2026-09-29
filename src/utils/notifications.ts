@@ -1,76 +1,120 @@
 import { Audiobook, NotificationLogItem } from '../types/audiobook';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Capacitor } from '@capacitor/core';
 
 // Local reference date matching current runtime
 export const CURRENT_DATE_STR = '2026-09-27';
 
 /**
- * Play a gentle Audible notification chime via Web Audio API
+ * Initialize native Android notification channel
  */
-export function playNotificationSound() {
-  try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new AudioCtx();
-    const now = ctx.currentTime;
-    
-    // Pleasant dual chime (F#5 to A5)
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc1.type = 'sine';
-    osc2.type = 'triangle';
-
-    osc1.frequency.setValueAtTime(739.99, now); // F#5
-    osc1.frequency.exponentialRampToValueAtTime(880.00, now + 0.12); // A5
-
-    osc2.frequency.setValueAtTime(369.99, now); // F#4
-    osc2.frequency.exponentialRampToValueAtTime(440.00, now + 0.12);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.18, now + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + 0.6);
-    osc2.stop(now + 0.6);
-  } catch (err) {
-    console.warn('Audio chime unavailable', err);
+export async function initNativeAndroidChannel() {
+  if (Capacitor.isNativePlatform() || typeof (LocalNotifications as any).createChannel === 'function') {
+    try {
+      await LocalNotifications.createChannel({
+        id: 'audible_release_alerts',
+        name: 'Audible Release Alerts',
+        description: 'Native notifications for upcoming audiobook releases and milestones',
+        importance: 5, // High importance (Heads-up alert banner on Android)
+        visibility: 1, // Public on lockscreen
+        vibration: true,
+        lights: true,
+        lightColor: '#bd93f9', // Dracula purple LED light
+      });
+    } catch (e) {
+      console.warn('Android channel init warning:', e);
+    }
   }
 }
 
 /**
- * Request real Web Notification API permission
+ * Request real Native Android (or Web fallback) Notification API permission
  */
 export async function requestPushPermission(): Promise<'granted' | 'denied' | 'default'> {
-  if (!('Notification' in window)) {
-    return 'denied';
+  // 1. Native Android environment via Capacitor LocalNotifications
+  if (Capacitor.isNativePlatform() || typeof (LocalNotifications as any).requestPermissions === 'function') {
+    try {
+      const result = await LocalNotifications.requestPermissions();
+      if (result.display === 'granted') {
+        await initNativeAndroidChannel();
+        return 'granted';
+      }
+      return result.display === 'denied' ? 'denied' : 'default';
+    } catch (err) {
+      console.warn('Capacitor native notification request failed, trying fallback:', err);
+    }
   }
-  try {
-    const perm = await Notification.requestPermission();
-    return perm;
-  } catch {
-    return 'denied';
+
+  // 2. Web browser fallback
+  if ('Notification' in window) {
+    try {
+      const perm = await Notification.requestPermission();
+      return perm;
+    } catch {
+      return 'denied';
+    }
   }
+
+  return 'denied';
 }
 
 /**
- * Send native push notification if permission is granted
+ * Check current notification permission status
  */
-export function sendNativePushNotification(title: string, options?: NotificationOptions) {
+export async function checkNotificationPermissionStatus(): Promise<boolean> {
+  if (Capacitor.isNativePlatform() || typeof (LocalNotifications as any).checkPermissions === 'function') {
+    try {
+      const res = await LocalNotifications.checkPermissions();
+      return res.display === 'granted';
+    } catch {}
+  }
+  if ('Notification' in window) {
+    return Notification.permission === 'granted';
+  }
+  return false;
+}
+
+/**
+ * Send native Android notification via Capacitor or Web Notification API
+ */
+export async function sendNativePushNotification(
+  title: string,
+  options?: { body?: string; id?: number }
+) {
+  const notifId = options?.id || Math.floor(Math.random() * 899999 + 100000);
+  const bodyText = options?.body || 'Audible release notification';
+
+  // 1. Native Android Notification
+  if (Capacitor.isNativePlatform() || typeof (LocalNotifications as any).schedule === 'function') {
+    try {
+      await initNativeAndroidChannel();
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notifId,
+            title,
+            body: bodyText,
+            channelId: 'audible_release_alerts',
+            smallIcon: 'ic_launcher',
+            schedule: { at: new Date(Date.now() + 250) },
+          },
+        ],
+      });
+      return;
+    } catch (err) {
+      console.warn('Native notification schedule error:', err);
+    }
+  }
+
+  // 2. Web browser fallback
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
       new Notification(title, {
-        icon: '/pwa-192x192.png',
-        badge: '/icon.svg',
-        ...options,
+        body: bodyText,
+        icon: '/icon.svg',
       });
     } catch (e) {
-      console.warn('Native notification failed:', e);
+      console.warn('Web notification failed:', e);
     }
   }
 }
@@ -167,27 +211,6 @@ export function getReleaseCountdown(releaseDateStr: string): {
     isToday: false,
     daysUntil: days,
     badgeText: `In ${weeks} Wks`,
-  };
-}
-
-/**
- * Generate scheduled reminder trigger dates for an audiobook
- */
-export function getScheduledAlertDates(releaseDateStr: string) {
-  const release = new Date(releaseDateStr + 'T00:00:00');
-
-  const oneWeek = new Date(release);
-  oneWeek.setDate(release.getDate() - 7);
-
-  const oneDay = new Date(release);
-  oneDay.setDate(release.getDate() - 1);
-
-  const formatDate = (d: Date) => d.toISOString().split('T')[0];
-
-  return {
-    oneWeekBefore: formatDate(oneWeek),
-    oneDayBefore: formatDate(oneDay),
-    dayOfRelease: releaseDateStr,
   };
 }
 

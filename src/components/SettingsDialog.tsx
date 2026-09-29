@@ -41,6 +41,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     pushSettings,
     updatePushSettings,
     requestSystemNotificationPermission,
+    triggerTestNotification,
     languageFilter,
     setLanguageFilter,
     theme,
@@ -695,13 +696,13 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     style={{ color: 'var(--md-sys-color-primary)' }}
                     className="text-xs font-bold uppercase tracking-wider"
                   >
-                    Release Alert Preferences
+                    Native Android Notification System
                   </h4>
                   <p
                     style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
                     className="text-[11px]"
                   >
-                    Configure notification intervals and audio chime triggers
+                    Direct Android system status bar alerts and release reminders
                   </p>
                 </div>
 
@@ -714,20 +715,22 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold block">Browser Push Notifications</span>
+                      <span className="text-xs font-bold block">Android Notification Permission</span>
                       <span
                         style={{ color: 'var(--md-sys-color-on-surface-variant)' }}
                         className="text-[11px]"
                       >
-                        Receive release day and countdown alerts on this device
+                        {pushSettings.pushEnabled
+                          ? 'Permission granted - Native alerts active'
+                          : 'Tap to request native OS notification access'}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={requestSystemNotificationPermission}
-                      className="md-btn-fab min-h-[38px] px-3.5 text-xs"
+                      className="md-btn-fab min-h-[38px] px-3.5 text-xs font-bold"
                     >
-                      Enable Alerts
+                      {pushSettings.pushEnabled ? 'Permission Active' : 'Request Android Permission'}
                     </button>
                   </div>
 
@@ -762,16 +765,20 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                     </label>
                   </div>
 
-                  <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)]">
-                    <label className="flex items-center gap-2 text-xs cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={pushSettings.soundEnabled}
-                        onChange={(e) => updatePushSettings({ soundEnabled: e.target.checked })}
-                        className="accent-[var(--md-sys-color-primary)] rounded"
-                      />
-                      <span>Play gentle audio chime with notifications</span>
-                    </label>
+                  <div className="pt-2 border-t border-[var(--md-sys-color-outline-variant)] flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold block">Test Android Notification</span>
+                      <span style={{ color: 'var(--md-sys-color-on-surface-variant)' }} className="text-[11px]">
+                        Post a sample alert to test your notification shade
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={triggerTestNotification}
+                      className="md-btn-outlined min-h-[38px] px-3.5 text-xs font-bold"
+                    >
+                      Send Test Alert
+                    </button>
                   </div>
                 </div>
               </div>

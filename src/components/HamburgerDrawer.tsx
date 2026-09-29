@@ -151,19 +151,6 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Quick Theme Switch in Drawer */}
-            <button
-              onClick={toggleTheme}
-              className="md-btn-icon shadow-xs"
-              title={theme === 'dark' ? 'Switch to Alucard Light' : 'Switch to Dracula Dark'}
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-4 w-4 text-amber-300" />
-              ) : (
-                <Moon className="h-4 w-4 text-purple-600" />
-              )}
-            </button>
-
             <button
               onClick={onClose}
               className="md-btn-icon shadow-xs"

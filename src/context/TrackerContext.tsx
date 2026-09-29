@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Audiobook, WatchlistItem, MuteItem, NotificationLogItem, PushNotificationSettings, TrackedEntity, TrackedEntityType } from '../types/audiobook';
 import { INITIAL_AUDIOBOOKS, DEFAULT_PUSH_SETTINGS } from '../data/initialCatalog';
-import { audioPlayer } from '../utils/audioPreview';
-import { playNotificationSound, sendNativePushNotification, requestPushPermission, CURRENT_DATE_STR, evaluateTriggeredReminders } from '../utils/notifications';
+import { sendNativePushNotification, requestPushPermission, CURRENT_DATE_STR, evaluateTriggeredReminders } from '../utils/notifications';
 import { fetchAudibleApiMetadata, scanWatchlistTargetLive, isMuted, isEnglishAudiobook, getASIN } from '../services/audibleApiService';
 import { createBackupJson, triggerFileDownload, exportToCsv, TrackerBackup } from '../utils/exportImport';
 
@@ -65,10 +64,6 @@ interface TrackerContextType {
   selectedBookId: string | null;
   setSelectedBookId: (id: string | null) => void;
   selectedBook: Audiobook | null;
-
-  // Audio preview
-  activeAudio: { isPlaying: boolean; bookId: string | null; progress: number };
-  toggleAudioPreview: (bookId: string) => void;
 
   // Book actions
   addBook: (book: Audiobook) => void;
@@ -278,22 +273,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
-  // Audio preview state
-  const [activeAudio, setActiveAudio] = useState<{ isPlaying: boolean; bookId: string | null; progress: number }>({
-    isPlaying: false,
-    bookId: null,
-    progress: 0,
-  });
-
-  useEffect(() => {
-    audioPlayer.subscribe((isPlaying, bookId, progress) => {
-      setActiveAudio({ isPlaying, bookId, progress });
-    });
-    return () => {
-      audioPlayer.stop();
-    };
-  }, []);
-
   // Save changes to localStorage
   useEffect(() => {
     try {
@@ -322,12 +301,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const selectedBook = books.find((b) => b.id === selectedBookId) || books[0] || null;
   const unreadNotifCount = notifications.filter((n) => !n.read).length;
 
-  const toggleAudioPreview = (bookId: string) => {
-    const book = books.find((b) => b.id === bookId);
-    if (!book) return;
-    audioPlayer.togglePlay(bookId, book.title, book.narrators.join(', '));
-  };
-
   const addBook = (newBook: Audiobook) => {
     // Check if muted
     if (isMuted(newBook.seriesName || newBook.series?.name || '—', newBook.title, newBook.author, muteList)) {
@@ -342,7 +315,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     setSelectedBookId(newBook.id);
-    if (pushSettings.soundEnabled) playNotificationSound();
     sendNativePushNotification(`Audiobook Added: ${newBook.title}`, {
       body: `By ${newBook.author} · Narrated by ${newBook.narrators.join(', ')}`,
     });
@@ -461,7 +433,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
           coverUrl: data.coverUrl || book.coverUrl,
         });
         setScanStatusText(`Refreshed: ${data.title}`);
-        if (pushSettings.soundEnabled) playNotificationSound();
         return true;
       }
     } catch {
@@ -517,7 +488,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setScanStatusText(`Scan complete. ${totalNew > 0 ? `Found ${totalNew} new release(s)!` : 'All watchlists up to date.'}`);
 
       if (totalNew > 0) {
-        if (pushSettings.soundEnabled) playNotificationSound();
         sendNativePushNotification('New Releases Discovered!', {
           body: `Found ${totalNew} new upcoming English release(s) across your watchlists.`,
         });
@@ -538,9 +508,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       found.forEach((b) => addBook(b));
       count = found.length;
       setScanStatusText(`Scan complete for ${target.name}. Found ${count} new release(s).`);
-      if (count > 0 && pushSettings.soundEnabled) {
-        playNotificationSound();
-      }
     } finally {
       setIsScanning(false);
     }
@@ -630,10 +597,10 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const triggerTestNotification = () => {
-    playNotificationSound();
     sendNativePushNotification('Audible Release Alert', {
       body: 'Reminder: "Protocol Omega" releases today on Audible!',
     });
+    showToast('Sent native notification! 🔔', 'info');
   };
 
   const updatePushSettings = (settings: Partial<PushNotificationSettings>) => {
@@ -644,7 +611,12 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const perm = await requestPushPermission();
     if (perm === 'granted') {
       setPushSettings((prev) => ({ ...prev, pushEnabled: true }));
-      playNotificationSound();
+      showToast('Native Android notification permission granted! 🔔', 'success');
+      sendNativePushNotification('Audible Tracker Notifications Active', {
+        body: 'You will receive native alerts on your device for upcoming releases!',
+      });
+    } else {
+      showToast('Notification permission was not granted.', 'info');
     }
   };
 
@@ -790,8 +762,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         selectedBookId,
         setSelectedBookId,
         selectedBook,
-        activeAudio,
-        toggleAudioPreview,
         addBook,
         updateBook,
         deleteBook,
