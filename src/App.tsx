@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
 import { TrackerProvider, useTracker } from './context/TrackerContext';
-import { ActionToolbar } from './components/ActionToolbar';
+import { HomeFilterBar } from './components/HomeFilterBar';
+import { PullToRefresh } from './components/PullToRefresh';
 import { AudiobookListView } from './components/AudiobookListView';
 import { PreviewPanel } from './components/PreviewPanel';
 import { StatusBar } from './components/StatusBar';
 import { AddBookDialog } from './components/AddBookDialog';
-import { WatchlistDialog } from './components/WatchlistDialog';
-import { MuteListDialog } from './components/MuteListDialog';
-import { PreferencesDialog } from './components/PreferencesDialog';
+import { SettingsDialog } from './components/SettingsDialog';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { AudiobookCard } from './components/AudiobookCard';
 import { BookDetailModal } from './components/BookDetailModal';
 import { MarkAsReadModal } from './components/MarkAsReadModal';
+import { FloatingBatchBar } from './components/FloatingBatchBar';
+import { ToastContainer } from './components/ToastContainer';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { Audiobook } from './types/audiobook';
 import { getDaysUntil } from './utils/notifications';
-import { Headphones, Eye, Settings } from 'lucide-react';
+import { Headphones, Plus, Settings, Eye } from 'lucide-react';
 
 function TrackerMain() {
   const {
@@ -28,13 +29,13 @@ function TrackerMain() {
     viewFilter,
     viewMode,
     setViewMode,
+    runScheduledScan,
+    isScanning,
   } = useTracker();
 
   // Dialog visibility
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isWatchlistOpen, setIsWatchlistOpen] = useState(false);
-  const [isMuteListOpen, setIsMuteListOpen] = useState(false);
-  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [selectedBookForDetail, setSelectedBookForDetail] = useState<Audiobook | null>(null);
   const [selectedBookForMarkRead, setSelectedBookForMarkRead] = useState<Audiobook | null>(null);
@@ -43,7 +44,7 @@ function TrackerMain() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
 
-  // Filter & Sort (matching AHK SortBookList)
+  // Filter & Sort
   const filteredBooks = books
     .filter((book) => {
       // 1. Status View Filter
@@ -88,104 +89,139 @@ function TrackerMain() {
       return daysB - daysA;
     });
 
+  const handlePullRefresh = async () => {
+    await runScheduledScan(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none antialiased overflow-x-hidden">
-      
-      {/* App Window Header with Android Notch / Status Bar Safe-Area Inset */}
-      <header className="pt-safe pb-2 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 z-20">
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500 text-slate-950 shadow-sm">
-            <Headphones className="h-3.5 w-3.5" />
+      {/* Clean App Header (Home Screen) */}
+      <header className="pt-safe pb-2.5 bg-slate-900 border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20">
+        {/* Brand / Logo */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-bold shadow-md">
+            <Headphones className="h-4 w-4" />
           </div>
-          <h1 className="font-display text-xs sm:text-sm font-bold text-white tracking-wide truncate">
-            Audible Auto-Tracker &amp; Watchlist Monitor
-          </h1>
+          <div>
+            <h1 className="font-display text-xs sm:text-sm font-bold text-white tracking-wide truncate">
+              Audible Tracker
+            </h1>
+          </div>
         </div>
 
-        {/* Header Right actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Home Screen Actions: Plus button & Settings button */}
+        <div className="flex items-center gap-2 shrink-0">
           <PWAInstallButton compact />
 
+          {/* Plus Button to add new items */}
           <button
-            onClick={() => setIsPreferencesOpen(true)}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold transition cursor-pointer"
-            title="Search & View Preferences"
+            onClick={() => setIsAddOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer"
+            title="Add audiobook, series, author, or narrator"
           >
-            <Settings className="h-3.5 w-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Settings</span>
+            <Plus className="h-4 w-4 stroke-[2.5]" />
+            <span className="hidden sm:inline">Add</span>
           </button>
 
+          {/* Settings Button */}
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-300 hover:text-white transition cursor-pointer"
+            title="Settings & Backup (Export / Import)"
+          >
+            <Settings className="h-4 w-4 text-amber-400" />
+          </button>
+
+          {/* Preview toggle on mobile */}
           <button
             onClick={() => setShowMobilePreview(!showMobilePreview)}
-            className={`lg:hidden flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-              showMobilePreview ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300'
+            className={`lg:hidden flex items-center gap-1 p-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              showMobilePreview
+                ? 'bg-amber-500 text-slate-950'
+                : 'bg-slate-800 text-slate-300 border border-slate-700/80'
             }`}
+            title="Toggle preview panel"
           >
-            <Eye className="h-3 w-3" />
-            <span>Preview</span>
+            <Eye className="h-4 w-4" />
           </button>
         </div>
       </header>
 
-      {/* Action Toolbar (AHK Button Row + Filters) */}
-      <ActionToolbar
-        onOpenAddDialog={() => setIsAddOpen(true)}
-        onOpenWatchlistDialog={() => setIsWatchlistOpen(true)}
-        onOpenMuteListDialog={() => setIsMuteListOpen(true)}
-        onOpenPreferences={() => setIsPreferencesOpen(true)}
+      {/* Streamlined Home Filter & View Bar */}
+      <HomeFilterBar
         viewMode={viewMode}
         setViewMode={setViewMode}
-        selectedIds={selectedIds}
+        totalFilteredCount={filteredBooks.length}
       />
 
-      {/* Main Workspace (ListView + Audiobook Preview Panel) */}
-      <main className="flex-1 flex flex-col lg:flex-row p-3 gap-3 overflow-hidden">
-        
-        {/* Left Side: Table View or Cover Card Grid */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {viewMode === 'table' ? (
-            <AudiobookListView
-              books={filteredBooks}
-              selectedIds={selectedIds}
-              setSelectedIds={setSelectedIds}
-            />
-          ) : viewMode === 'grid' ? (
-            <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
-              {filteredBooks.map((book) => (
-                <AudiobookCard
-                  key={book.id}
-                  book={book}
-                  viewMode="grid"
-                  onSelect={(b) => setSelectedBookForDetail(b)}
-                  onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
-                />
-              ))}
-            </div>
-          ) : viewMode === 'compact_grid' ? (
-            <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 p-1">
-              {filteredBooks.map((book) => (
-                <AudiobookCard
-                  key={book.id}
-                  book={book}
-                  viewMode="compact_grid"
-                  onSelect={(b) => setSelectedBookForDetail(b)}
-                  onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto space-y-2 p-1">
-              {filteredBooks.map((book) => (
-                <AudiobookCard
-                  key={book.id}
-                  book={book}
-                  viewMode="list"
-                  onSelect={(b) => setSelectedBookForDetail(b)}
-                  onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
-                />
-              ))}
-            </div>
-          )}
+      {/* Main Workspace with Pull-to-Refresh */}
+      <main className="flex-1 flex flex-col lg:flex-row p-2.5 sm:p-3 gap-3 overflow-hidden">
+        {/* Book View (wrapped with smooth pull-to-refresh) */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/30">
+          <PullToRefresh
+            onRefresh={handlePullRefresh}
+            isRefreshing={isScanning}
+            className="flex-1 h-full"
+          >
+            {filteredBooks.length === 0 ? (
+              <div className="h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center text-slate-500">
+                <Headphones className="h-10 w-10 text-slate-700 mb-3" />
+                <h3 className="text-sm font-bold text-slate-400 mb-1">No audiobooks match your filter</h3>
+                <p className="text-xs text-slate-500 max-w-sm mb-4">
+                  Try adjusting your search query, or tap the <span className="text-amber-400 font-semibold">+ Add</span> button above to track new titles, authors, or series.
+                </p>
+                <button
+                  onClick={() => setIsAddOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add New Item</span>
+                </button>
+              </div>
+            ) : viewMode === 'table' ? (
+              <AudiobookListView
+                books={filteredBooks}
+                selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
+              />
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 p-3">
+                {filteredBooks.map((book) => (
+                  <AudiobookCard
+                    key={book.id}
+                    book={book}
+                    viewMode="grid"
+                    onSelect={(b) => setSelectedBookForDetail(b)}
+                    onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
+                  />
+                ))}
+              </div>
+            ) : viewMode === 'compact_grid' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5 p-2.5">
+                {filteredBooks.map((book) => (
+                  <AudiobookCard
+                    key={book.id}
+                    book={book}
+                    viewMode="compact_grid"
+                    onSelect={(b) => setSelectedBookForDetail(b)}
+                    onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2 p-3">
+                {filteredBooks.map((book) => (
+                  <AudiobookCard
+                    key={book.id}
+                    book={book}
+                    viewMode="list"
+                    onSelect={(b) => setSelectedBookForDetail(b)}
+                    onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
+                  />
+                ))}
+              </div>
+            )}
+          </PullToRefresh>
         </div>
 
         {/* Right Side: Audiobook Preview Panel */}
@@ -195,37 +231,31 @@ function TrackerMain() {
             onOpenMarkRead={(b) => setSelectedBookForMarkRead(b)}
           />
         </div>
-
       </main>
 
-      {/* Status Bar (with Android Gesture Bar Safe-Area Inset) */}
-      <StatusBar
-        onOpenNotifications={() => setIsNotifOpen(true)}
-        onOpenPreferences={() => setIsPreferencesOpen(true)}
+      {/* Floating Batch Action Bar (appears only when items are selected) */}
+      <FloatingBatchBar
+        selectedIds={selectedIds}
+        onClearSelection={() => setSelectedIds([])}
       />
 
-      {/* Modals directly matching AHK GUI dialogs */}
+      {/* Status Bar */}
+      <StatusBar
+        onOpenNotifications={() => setIsNotifOpen(true)}
+        onOpenPreferences={() => setIsSettingsOpen(true)}
+      />
+
+      {/* Modals & Dialogs */}
       <AddBookDialog
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
       />
 
-      <WatchlistDialog
-        isOpen={isWatchlistOpen}
-        onClose={() => setIsWatchlistOpen(false)}
+      <SettingsDialog
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
 
-      <MuteListDialog
-        isOpen={isMuteListOpen}
-        onClose={() => setIsMuteListOpen(false)}
-      />
-
-      <PreferencesDialog
-        isOpen={isPreferencesOpen}
-        onClose={() => setIsPreferencesOpen(false)}
-      />
-
-      {/* Detail & History modal for quick editing */}
       <BookDetailModal
         book={selectedBookForDetail}
         onClose={() => setSelectedBookForDetail(null)}
@@ -242,8 +272,10 @@ function TrackerMain() {
         onClose={() => setIsNotifOpen(false)}
       />
 
-      <OfflineIndicator />
+      {/* In-app Toast Container */}
+      <ToastContainer />
 
+      <OfflineIndicator />
     </div>
   );
 }

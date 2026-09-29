@@ -4,6 +4,7 @@ import { INITIAL_AUDIOBOOKS, DEFAULT_PUSH_SETTINGS } from '../data/initialCatalo
 import { audioPlayer } from '../utils/audioPreview';
 import { playNotificationSound, sendNativePushNotification, requestPushPermission, CURRENT_DATE_STR, evaluateTriggeredReminders } from '../utils/notifications';
 import { fetchAudibleApiMetadata, scanWatchlistTargetLive, isMuted, isEnglishAudiobook, getASIN } from '../services/audibleApiService';
+import { createBackupJson, triggerFileDownload, exportToCsv, TrackerBackup } from '../utils/exportImport';
 
 const DEFAULT_WATCHLIST: WatchlistItem[] = [
   { id: 'w-1', type: 'Author', name: 'Brandon Sanderson', url: 'https://www.audible.com/author/Brandon-Sanderson/B001IGFHW6' },
@@ -31,6 +32,12 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   defaultSearchMode: 'Title',
   defaultViewFilter: 'all',
 };
+
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'info' | 'error';
+}
 
 interface TrackerContextType {
   books: Audiobook[];
@@ -88,6 +95,15 @@ interface TrackerContextType {
   triggerTestNotification: () => void;
   updatePushSettings: (settings: Partial<PushNotificationSettings>) => void;
   requestSystemNotificationPermission: () => Promise<void>;
+
+  // Export & Import
+  exportBackup: (format?: 'json' | 'csv') => void;
+  importBackup: (backup: TrackerBackup, mode: 'merge' | 'replace') => { success: boolean; booksCount: number; watchlistsCount: number };
+
+  // In-app Toasts
+  toasts: ToastMessage[];
+  showToast: (message: string, type?: 'success' | 'info' | 'error') => void;
+  removeToast: (id: string) => void;
 
   // Filters
   searchQuery: string;
@@ -570,6 +586,120 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Toast notification management
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3500);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Export backup data
+  const exportBackup = (format: 'json' | 'csv' = 'json') => {
+    try {
+      if (format === 'csv') {
+        exportToCsv(books);
+        showToast(`Exported ${books.length} audiobooks to CSV`, 'success');
+      } else {
+        const jsonStr = createBackupJson(books, watchlists, muteList, preferences, pushSettings);
+        const dateStr = new Date().toISOString().split('T')[0];
+        triggerFileDownload(jsonStr, `audible_tracker_backup_${dateStr}.json`, 'application/json');
+        showToast(`Backup exported (${books.length} books, ${watchlists.length} watchlist targets)`, 'success');
+      }
+    } catch (err: any) {
+      showToast(`Export failed: ${err.message || 'Unknown error'}`, 'error');
+    }
+  };
+
+  // Import backup data (Merge or Replace)
+  const importBackup = (
+    backup: TrackerBackup,
+    mode: 'merge' | 'replace'
+  ): { success: boolean; booksCount: number; watchlistsCount: number } => {
+    try {
+      const incomingBooks = backup.books || [];
+      const incomingWatchlists = backup.watchlists || [];
+      const incomingMuteList = backup.muteList || [];
+
+      if (mode === 'replace') {
+        setBooks(incomingBooks);
+        if (incomingWatchlists.length > 0) setWatchlists(incomingWatchlists);
+        if (incomingMuteList.length > 0) setMuteList(incomingMuteList);
+        if (backup.preferences) updatePreferences(backup.preferences);
+        showToast(`Restored ${incomingBooks.length} books and ${incomingWatchlists.length} watchlist targets!`, 'success');
+        return { success: true, booksCount: incomingBooks.length, watchlistsCount: incomingWatchlists.length };
+      } else {
+        // Merge mode
+        let addedBooks = 0;
+        setBooks((prev) => {
+          const merged = [...prev];
+          for (const inBook of incomingBooks) {
+            const inAsin = getASIN(inBook.url || inBook.audibleUrl || '');
+            const inTitle = inBook.title.toLowerCase().trim();
+
+            const matchIdx = merged.findIndex((b) => {
+              if (inAsin && getASIN(b.url || b.audibleUrl || '') === inAsin) return true;
+              if (b.id === inBook.id) return true;
+              return b.title.toLowerCase().trim() === inTitle;
+            });
+
+            if (matchIdx >= 0) {
+              merged[matchIdx] = {
+                ...inBook,
+                downloaded: merged[matchIdx].downloaded || inBook.downloaded,
+                listened: merged[matchIdx].listened || inBook.listened,
+                isRead: merged[matchIdx].isRead || inBook.isRead,
+              };
+            } else {
+              merged.push(inBook);
+              addedBooks++;
+            }
+          }
+          return merged;
+        });
+
+        let addedWatchlists = 0;
+        setWatchlists((prev) => {
+          const merged = [...prev];
+          for (const w of incomingWatchlists) {
+            if (!merged.some((existing) => existing.type === w.type && existing.name.toLowerCase() === w.name.toLowerCase())) {
+              merged.push({ ...w, id: w.id || `w-${Date.now()}-${Math.random().toString(36).substring(2, 6)}` });
+              addedWatchlists++;
+            }
+          }
+          return merged;
+        });
+
+        setMuteList((prev) => {
+          const merged = [...prev];
+          for (const m of incomingMuteList) {
+            if (!merged.some((existing) => existing.type === m.type && existing.value.toLowerCase() === m.value.toLowerCase())) {
+              merged.push({ ...m, id: m.id || `m-${Date.now()}-${Math.random().toString(36).substring(2, 6)}` });
+            }
+          }
+          return merged;
+        });
+
+        if (backup.preferences) {
+          updatePreferences(backup.preferences);
+        }
+
+        showToast(`Merged ${addedBooks} new books & ${addedWatchlists} watchlists!`, 'success');
+        return { success: true, booksCount: incomingBooks.length, watchlistsCount: incomingWatchlists.length };
+      }
+    } catch (err: any) {
+      showToast(`Import error: ${err.message || 'Failed to process import'}`, 'error');
+      return { success: false, booksCount: 0, watchlistsCount: 0 };
+    }
+  };
+
   const resetToDefaults = () => {
     setBooks(INITIAL_AUDIOBOOKS);
     setWatchlists(DEFAULT_WATCHLIST);
@@ -622,6 +752,11 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         triggerTestNotification,
         updatePushSettings,
         requestSystemNotificationPermission,
+        exportBackup,
+        importBackup,
+        toasts,
+        showToast,
+        removeToast,
         searchQuery,
         setSearchQuery,
         selectedGenre,
