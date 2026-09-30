@@ -271,7 +271,7 @@ export const ActionToolbar: React.FC<ActionToolbarProps> = ({
           <div className="relative shrink-0">
             <select
               value={selectedGenre}
-              onChange={(e) => setSelectedGenre(e.target.value)}
+              onChange={(e) => setSelectedGenre(e.target.value as any)}
               className="h-8 rounded-lg bg-slate-950 border border-slate-800 px-2.5 text-[11px] font-semibold text-slate-300 focus:outline-none focus:border-amber-500 cursor-pointer"
             >
               {GENRES.map((g) => (

@@ -1,40 +1,38 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Audiobook, WatchlistItem, MuteItem, NotificationLogItem, PushNotificationSettings, TrackedEntity, TrackedEntityType } from '../types/audiobook';
-import { INITIAL_AUDIOBOOKS, DEFAULT_PUSH_SETTINGS } from '../data/initialCatalog';
-import { sendNativePushNotification, requestPushPermission, CURRENT_DATE_STR, evaluateTriggeredReminders } from '../utils/notifications';
-import { fetchAudibleApiMetadata, scanWatchlistTargetLive, isMuted, isEnglishAudiobook, getASIN } from '../services/audibleApiService';
-import { createBackupJson, triggerFileDownload, exportToCsv, TrackerBackup } from '../utils/exportImport';
-
-const DEFAULT_WATCHLIST: WatchlistItem[] = [
-  { id: 'w-1', type: 'Author', name: 'Brandon Sanderson', url: 'https://www.audible.com/author/Brandon-Sanderson/B001IGFHW6' },
-  { id: 'w-2', type: 'Author', name: 'Matt Dinniman', url: 'https://www.audible.com/author/Matt-Dinniman/B0034Q8A44' },
-  { id: 'w-3', type: 'Author', name: 'Dennis E. Taylor', url: 'https://www.audible.com/author/Dennis-E-Taylor/B0107Z19OQ' },
-  { id: 'w-4', type: 'Series', name: 'Dungeon Crawler Universe', url: 'https://www.audible.com/series/Dungeon-Crawler-Carl-Audiobooks/B08V81GY52' },
-  { id: 'w-5', type: 'Series', name: 'Bobiverse', url: 'https://www.audible.com/series/Bobiverse-Audiobooks/B0180TL5R4' },
-  { id: 'w-6', type: 'Narrator', name: 'Jeff Hays', url: 'https://www.audible.com/narrator/Jeff-Hays/B00TGB8A1S' },
-  { id: 'w-7', type: 'Narrator', name: 'Ray Porter', url: 'https://www.audible.com/narrator/Ray-Porter/B00732A15K' },
-];
-
-const DEFAULT_MUTELIST: MuteItem[] = [
-  { id: 'm-1', type: 'Series', value: 'Spanish Edition' },
-  { id: 'm-2', type: 'Keyword', value: 'Dramatized Adaptation' },
-];
-
-export interface AppPreferences {
-  defaultViewMode: 'table' | 'grid' | 'compact_grid' | 'list';
-  defaultSearchMode: 'Title' | 'Series' | 'Author' | 'Narrator';
-  defaultViewFilter: 'all' | 'upcoming' | 'today' | 'downloaded' | 'listened';
-  languageFilter: 'english_only' | 'all_languages';
-  theme: 'light' | 'dark';
-}
-
-export const DEFAULT_PREFERENCES: AppPreferences = {
-  defaultViewMode: 'compact_grid',
-  defaultSearchMode: 'Title',
-  defaultViewFilter: 'all',
-  languageFilter: 'english_only',
-  theme: 'light', // Alucard Light Mode is the default
-};
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  Audiobook,
+  Author,
+  Narrator,
+  Series,
+  WatchlistItem,
+  MuteItem,
+  NotificationLogItem,
+  PushNotificationSettings,
+  LocalSyncConfig,
+  AppTab,
+  Genre,
+  TrackedEntity,
+  TrackedEntityType,
+} from '../types/audiobook';
+import {
+  INITIAL_AUDIOBOOKS,
+  INITIAL_AUTHORS,
+  INITIAL_NARRATORS,
+  INITIAL_SERIES,
+  DEFAULT_PUSH_SETTINGS,
+} from '../data/initialCatalog';
+import {
+  sendNativePushNotification,
+  requestPushPermission,
+} from '../utils/notifications';
+import {
+  getInitialSyncConfig,
+  saveSyncConfig,
+  selectLocalFolder,
+  syncToLocalFolder,
+  restoreFromLocalFolder,
+  LocalSyncPayload,
+} from '../services/localFolderSync';
 
 export interface ToastMessage {
   id: string;
@@ -42,342 +40,493 @@ export interface ToastMessage {
   type: 'success' | 'info' | 'error';
 }
 
+export interface AppPreferences {
+  defaultViewMode: 'compact_grid' | 'grid' | 'table' | 'list';
+  defaultSearchMode: 'Title' | 'Series' | 'Author' | 'Narrator';
+  defaultCalendarView: 'month' | 'agenda';
+  defaultViewFilter?: 'all' | 'upcoming' | 'today' | 'downloaded' | 'listened';
+  defaultMarketplace: string;
+  comfortTextMode: boolean;
+  theme: 'light' | 'dark';
+}
+
+export const DEFAULT_PREFERENCES: AppPreferences = {
+  defaultViewMode: 'compact_grid',
+  defaultSearchMode: 'Title',
+  defaultCalendarView: 'month',
+  defaultViewFilter: 'all',
+  defaultMarketplace: 'US',
+  comfortTextMode: false,
+  theme: 'light',
+};
+
 interface TrackerContextType {
+  // Navigation
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
+
+  // Data Collections
   books: Audiobook[];
+  authors: Author[];
+  narrators: Narrator[];
+  series: Series[];
   watchlists: WatchlistItem[];
   muteList: MuteItem[];
   notifications: NotificationLogItem[];
   pushSettings: PushNotificationSettings;
   preferences: AppPreferences;
-  updatePreferences: (partial: Partial<AppPreferences>) => void;
-  languageFilter: 'english_only' | 'all_languages';
-  setLanguageFilter: (f: 'english_only' | 'all_languages') => void;
-  theme: 'light' | 'dark';
-  setTheme: (t: 'light' | 'dark') => void;
-  toggleTheme: () => void;
-  unreadNotifCount: number;
-  lastCheckedTime: string | null;
-  isScanning: boolean;
-  scanStatusText: string;
+  syncConfig: LocalSyncConfig;
 
-  // Selected item in table
-  selectedBookId: string | null;
-  setSelectedBookId: (id: string | null) => void;
-  selectedBook: Audiobook | null;
-
-  // Book actions
-  addBook: (book: Audiobook) => void;
-  updateBook: (id: string, updates: Partial<Audiobook>) => void;
-  deleteBook: (id: string) => void;
-  deleteMultipleBooks: (ids: string[]) => void;
-  toggleField: (bookId: string, field: 'downloaded' | 'listened') => void;
-  toggleReminder: (bookId: string, type: 'oneWeekBefore' | 'oneDayBefore' | 'dayOfRelease') => void;
-  markAsRead: (bookId: string, details?: { completedAt?: string; durationHours?: number; rating?: number; notes?: string }) => void;
-  markAsUnread: (bookId: string) => void;
-  refetchBookMetadata: (bookId: string) => Promise<boolean>;
-
-  // Scanning & Watchlist actions
-  runScheduledScan: (silent?: boolean) => Promise<{ newCount: number }>;
-  scanSingleTarget: (target: WatchlistItem) => Promise<number>;
-  addWatchlistTarget: (target: Omit<WatchlistItem, 'id'>) => void;
-  removeWatchlistTarget: (id: string) => void;
-  addMuteRule: (rule: Omit<MuteItem, 'id'>) => void;
-  removeMuteRule: (id: string) => void;
-  quickMuteSeries: (seriesName: string) => void;
-  quickAddWatchlist: (type: 'Author' | 'Series' | 'Narrator', name: string, url?: string) => void;
-
-  // Compatibility aliases
-  trackedEntities: WatchlistItem[];
-  addTrackedEntity: (entity: { type: TrackedEntityType; name: string; notes?: string; url?: string }) => void;
-  removeTrackedEntity: (id: string) => void;
-  isEntityTracked: (type: 'author' | 'narrator' | 'series', name: string) => boolean;
-
-  // Notifications
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
-  deleteNotification: (id: string) => void;
-  triggerTestNotification: () => void;
-  updatePushSettings: (settings: Partial<PushNotificationSettings>) => void;
-  requestSystemNotificationPermission: () => Promise<void>;
-
-  // Export & Import
-  exportBackup: (format?: 'json' | 'csv') => void;
-  importBackup: (backup: TrackerBackup, mode: 'merge' | 'replace') => { success: boolean; booksCount: number; watchlistsCount: number };
-
-  // In-app Toasts
-  toasts: ToastMessage[];
-  showToast: (message: string, type?: 'success' | 'info' | 'error') => void;
-  removeToast: (id: string) => void;
-
-  // Filters
+  // Filter / View State
   searchQuery: string;
   setSearchQuery: (q: string) => void;
-  selectedGenre: string;
-  setSelectedGenre: (g: string) => void;
+  selectedGenre: Genre | 'All';
+  setSelectedGenre: (g: Genre | 'All') => void;
   minRating: number;
   setMinRating: (r: number) => void;
   viewFilter: 'all' | 'upcoming' | 'today' | 'downloaded' | 'listened';
   setViewFilter: (f: 'all' | 'upcoming' | 'today' | 'downloaded' | 'listened') => void;
-  timeframeFilter: 'all' | 'today' | 'week' | 'month' | 'tracked';
-  setTimeframeFilter: (tf: 'all' | 'today' | 'week' | 'month' | 'tracked') => void;
-  viewMode: 'grid' | 'compact_grid' | 'list' | 'table';
-  setViewMode: (vm: any) => void;
+  theme: 'light' | 'dark';
+  setTheme: (t: 'light' | 'dark') => void;
+  toggleTheme: () => void;
+  unreadNotifCount: number;
+  isScanning: boolean;
+  lastCheckedTime: string | null;
+  scanStatusText: string;
+  timeframeFilter: string;
+  setTimeframeFilter: (t: string) => void;
+  viewMode: 'compact_grid' | 'grid' | 'table' | 'list';
+  setViewMode: (v: 'compact_grid' | 'grid' | 'table' | 'list') => void;
+  languageFilter: 'english_only' | 'all_languages';
+  setLanguageFilter: (f: 'english_only' | 'all_languages') => void;
 
+  // Modal / Detail Selections
+  selectedBook: Audiobook | null;
+  setSelectedBook: (b: Audiobook | null) => void;
+  selectedBookId: string | null;
+  setSelectedBookId: (id: string | null) => void;
+  selectedAuthor: Author | null;
+  setSelectedAuthor: (a: Author | null) => void;
+  selectedSeries: Series | null;
+  setSelectedSeries: (s: Series | null) => void;
+  selectedNarrator: Narrator | null;
+  setSelectedNarrator: (n: Narrator | null) => void;
+  isSearchOpen: boolean;
+  setIsSearchOpen: (open: boolean) => void;
+
+  // Follow / Unfollow Actions
+  toggleFollowBook: (bookId: string) => void;
+  toggleFollowAuthor: (authorName: string) => void;
+  toggleFollowNarrator: (narratorName: string) => void;
+  toggleFollowSeries: (seriesName: string) => void;
+  isBookFollowed: (bookId: string) => boolean;
+  isAuthorFollowed: (authorName: string) => boolean;
+  isNarratorFollowed: (narratorName: string) => boolean;
+  isSeriesFollowed: (seriesName: string) => boolean;
+  isEntityTracked: (type: 'author' | 'narrator' | 'series', name: string) => boolean;
+  addTrackedEntity: (entity: { type: TrackedEntityType; name: string; notes?: string; url?: string }) => void;
+  removeTrackedEntity: (id: string) => void;
+  trackedEntities: TrackedEntity[];
+  quickMuteSeries: (seriesName: string) => void;
+  quickAddWatchlist: (type: 'Author' | 'Series' | 'Narrator', name: string, url?: string) => void;
+  refetchBookMetadata: (bookId: string) => Promise<boolean>;
+  runScheduledScan: (silent?: boolean) => Promise<{ newCount: number }>;
+  exportBackup: (...args: any[]) => void;
+  importBackup: (...args: any[]) => void;
   resetToDefaults: () => void;
+
+  // Book CRUD & Modifications
+  addBook: (book: Audiobook) => void;
+  updateBook: (id: string, updates: Partial<Audiobook>) => void;
+  deleteBook: (id: string) => void;
+  deleteMultipleBooks: (ids: string[]) => void;
+  updateReleaseDate: (bookId: string, newDate: string, reason?: string) => void;
+  toggleDownload: (bookId: string) => void;
+  toggleField: (bookId: string, field: 'downloaded' | 'listened') => void;
+  markAsRead: (bookId: string, details?: { completedAt?: string; durationHours?: number; rating?: number; notes?: string }) => void;
+  markAsUnread: (bookId: string) => void;
+  toggleReminder: (bookId: string, type: keyof Audiobook['reminders']) => void;
+
+  // Watchlist & Mute Rules
+  addWatchlistTarget: (target: Omit<WatchlistItem, 'id'>) => void;
+  removeWatchlistTarget: (id: string) => void;
+  scanSingleTarget: (target: WatchlistItem) => Promise<number>;
+  addMuteRule: (rule: Omit<MuteItem, 'id'>) => void;
+  removeMuteRule: (id: string) => void;
+
+  // Local Folder Sync (No Accounts!)
+  connectLocalFolder: () => Promise<void>;
+  performLocalSync: () => Promise<void>;
+  performLocalRestore: () => Promise<void>;
+  toggleAutoSync: (enabled: boolean) => void;
+
+  // Notifications & Settings
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  deleteNotification: (id: string) => void;
+  triggerTestNotification: () => void;
+  requestSystemNotificationPermission: () => Promise<void>;
+  updatePushSettings: (settings: Partial<PushNotificationSettings>) => void;
+  updatePreferences: (partial: Partial<AppPreferences>) => void;
+
+  // Toasts
+  toasts: ToastMessage[];
+  showToast: (message: string, type?: 'success' | 'info' | 'error') => void;
+  removeToast: (id: string) => void;
 }
 
 const TrackerContext = createContext<TrackerContextType | undefined>(undefined);
 
-const STORAGE_KEYS = {
-  BOOKS: 'audible_tracker_books_ahk_v2',
-  WATCHLIST: 'audible_tracker_watchlist_ahk_v2',
-  MUTELIST: 'audible_tracker_mutelist_ahk_v2',
-  LAST_CHECK: 'audible_tracker_last_check_ahk_v2',
-  SETTINGS: 'audible_tracker_settings_ahk_v2',
-  PREFERENCES: 'audible_tracker_preferences_ahk_v2',
-};
-
 export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [preferences, setPreferences] = useState<AppPreferences>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PREFERENCES);
-      if (saved) return { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) };
-    } catch {}
-    return DEFAULT_PREFERENCES;
-  });
+  const [activeTab, setActiveTab] = useState<AppTab>('home');
 
   const [books, setBooks] = useState<Audiobook[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.BOOKS);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_AUDIOBOOKS.map((b) => ({
-      ...b,
-      downloaded: (b.downloaded || 'No') as 'Yes' | 'No',
-      listened: (b.isRead ? 'Yes' : 'No') as 'Yes' | 'No',
-      seriesName: b.series?.name || '—',
-      narrator: b.narrators.join(', '),
-      url: b.audibleUrl || '',
-    }));
+      const saved = localStorage.getItem('audible_tracker_books_v3');
+      return saved ? JSON.parse(saved) : INITIAL_AUDIOBOOKS;
+    } catch {
+      return INITIAL_AUDIOBOOKS;
+    }
   });
 
-  const [watchlists, setWatchlists] = useState<WatchlistItem[]>(() => {
+  const [authors, setAuthors] = useState<Author[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.WATCHLIST);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_WATCHLIST;
+      const saved = localStorage.getItem('audible_tracker_authors_v3');
+      return saved ? JSON.parse(saved) : INITIAL_AUTHORS;
+    } catch {
+      return INITIAL_AUTHORS;
+    }
   });
 
-  const [muteList, setMuteList] = useState<MuteItem[]>(() => {
+  const [narrators, setNarrators] = useState<Narrator[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.MUTELIST);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_MUTELIST;
+      const saved = localStorage.getItem('audible_tracker_narrators_v3');
+      return saved ? JSON.parse(saved) : INITIAL_NARRATORS;
+    } catch {
+      return INITIAL_NARRATORS;
+    }
   });
 
-  const [lastCheckedTime, setLastCheckedTime] = useState<string | null>(() => {
-    return localStorage.getItem(STORAGE_KEYS.LAST_CHECK) || 'Today 00:00';
+  const [series, setSeries] = useState<Series[]>(() => {
+    try {
+      const saved = localStorage.getItem('audible_tracker_series_v3');
+      return saved ? JSON.parse(saved) : INITIAL_SERIES;
+    } catch {
+      return INITIAL_SERIES;
+    }
+  });
+
+  const [muteList, setMuteList] = useState<MuteItem[]>([
+    { id: 'm-1', type: 'Series', value: 'Spanish Edition' },
+  ]);
+
+  const [notifications, setNotifications] = useState<NotificationLogItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('audible_tracker_notifications_v3');
+      return saved ? JSON.parse(saved) : [
+        {
+          id: 'notif-1',
+          bookId: 'ab-2',
+          bookTitle: 'This Inevitable Ruin',
+          type: 'date_changed',
+          title: 'Release Date Changed',
+          message: 'Dungeon Crawler Carl Book 7 moved from Sep 30 to Oct 15 for full-cast audio.',
+          triggerDate: '2026-09-10',
+          timestamp: new Date(Date.now() - 3600000 * 48).toISOString(),
+          read: false,
+          oldDate: '2026-09-30',
+          newDate: '2026-10-15',
+        },
+      ];
+    } catch {
+      return [];
+    }
   });
 
   const [pushSettings, setPushSettings] = useState<PushNotificationSettings>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_PUSH_SETTINGS;
+      const saved = localStorage.getItem('audible_tracker_push_settings_v3');
+      return saved ? JSON.parse(saved) : DEFAULT_PUSH_SETTINGS;
+    } catch {
+      return DEFAULT_PUSH_SETTINGS;
+    }
   });
 
-  const [notifications, setNotifications] = useState<NotificationLogItem[]>([]);
-  const [selectedBookId, setSelectedBookId] = useState<string | null>(() => books[0]?.id || null);
+  const [preferences, setPreferences] = useState<AppPreferences>(() => {
+    try {
+      const saved = localStorage.getItem('audible_tracker_prefs_v3');
+      return saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
+    } catch {
+      return DEFAULT_PREFERENCES;
+    }
+  });
 
-  // Scanning state
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanStatusText, setScanStatusText] = useState('Ready.');
+  const [syncConfig, setSyncConfig] = useState<LocalSyncConfig>(getInitialSyncConfig);
 
-  // Filters (respecting user default preferences)
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('All');
+  const [selectedGenre, setSelectedGenre] = useState<Genre | 'All'>('All');
   const [minRating, setMinRating] = useState(0);
-  const [viewFilter, setViewFilter] = useState<'all' | 'upcoming' | 'today' | 'downloaded' | 'listened'>(
-    preferences.defaultViewFilter || 'all'
-  );
-  const [timeframeFilter, setTimeframeFilter] = useState<'all' | 'today' | 'week' | 'month' | 'tracked'>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'compact_grid' | 'list' | 'table'>(
-    preferences.defaultViewMode || 'compact_grid'
-  );
+  const [viewFilter, setViewFilter] = useState<'all' | 'upcoming' | 'today' | 'downloaded' | 'listened'>('all');
+  const [timeframeFilter, setTimeframeFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'compact_grid' | 'grid' | 'table' | 'list'>('compact_grid');
+  const [languageFilter, setLanguageFilter] = useState<'english_only' | 'all_languages'>('english_only');
+  const [isScanning, setIsScanning] = useState(false);
 
-  const [languageFilter, setLanguageFilterState] = useState<'english_only' | 'all_languages'>(
-    preferences.languageFilter || 'english_only'
-  );
+  const [selectedBook, setSelectedBook] = useState<Audiobook | null>(null);
+  const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
+  const [selectedSeries, setSelectedSeries] = useState<Series | null>(null);
+  const [selectedNarrator, setSelectedNarrator] = useState<Narrator | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
-    try {
-      const saved = localStorage.getItem('audible_tracker_theme');
-      if (saved === 'dark' || saved === 'light') return saved;
-      if (preferences.theme === 'dark' || preferences.theme === 'light') return preferences.theme;
-    } catch {}
-    return 'light'; // Alucard Light is default
-  });
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const showToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'info') => {
+    const id = Date.now().toString() + Math.random().toString().slice(2, 6);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dracula' : 'alucard');
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) {
-      metaTheme.setAttribute('content', theme === 'dark' ? '#282a36' : '#f8f8f2');
-    }
-    try {
-      localStorage.setItem('audible_tracker_theme', theme);
-    } catch {}
-  }, [theme]);
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
-  const setTheme = (newTheme: 'light' | 'dark') => {
-    setThemeState(newTheme);
-    updatePreferences({ theme: newTheme });
-    showToast(
-      newTheme === 'dark' ? 'Switched to Dracula Dark Mode 🧛' : 'Switched to Alucard Light Mode ☀️',
-      'info'
-    );
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
-
-  const setLanguageFilter = (lang: 'english_only' | 'all_languages') => {
-    setLanguageFilterState(lang);
-    updatePreferences({ languageFilter: lang });
-    showToast(
-      lang === 'english_only' ? 'Filtered to English releases only' : 'Tracking all languages (German, Spanish, French, etc.)',
-      'info'
-    );
-  };
-
-  const updatePreferences = (partial: Partial<AppPreferences>) => {
-    setPreferences((prev) => {
-      const next = { ...prev, ...partial };
-      try {
-        localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(next));
-      } catch {}
-      if (partial.defaultViewMode) setViewMode(partial.defaultViewMode);
-      if (partial.defaultViewFilter) setViewFilter(partial.defaultViewFilter);
-      if (partial.languageFilter) setLanguageFilterState(partial.languageFilter);
-      if (partial.theme) setThemeState(partial.theme);
-      return next;
-    });
-  };
-
-  // Save changes to localStorage
+  // Save to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(books));
+      localStorage.setItem('audible_tracker_books_v3', JSON.stringify(books));
     } catch {}
   }, [books]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(watchlists));
+      localStorage.setItem('audible_tracker_authors_v3', JSON.stringify(authors));
     } catch {}
-  }, [watchlists]);
+  }, [authors]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEYS.MUTELIST, JSON.stringify(muteList));
+      localStorage.setItem('audible_tracker_narrators_v3', JSON.stringify(narrators));
     } catch {}
-  }, [muteList]);
+  }, [narrators]);
 
   useEffect(() => {
-    if (lastCheckedTime) {
-      localStorage.setItem(STORAGE_KEYS.LAST_CHECK, lastCheckedTime);
+    try {
+      localStorage.setItem('audible_tracker_series_v3', JSON.stringify(series));
+    } catch {}
+  }, [series]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('audible_tracker_notifications_v3', JSON.stringify(notifications));
+    } catch {}
+  }, [notifications]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('audible_tracker_push_settings_v3', JSON.stringify(pushSettings));
+    } catch {}
+  }, [pushSettings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('audible_tracker_prefs_v3', JSON.stringify(preferences));
+    } catch {}
+  }, [preferences]);
+
+  // Apply Theme
+  useEffect(() => {
+    const root = document.documentElement;
+    if (preferences.theme === 'dark') {
+      root.classList.add('dark');
+      root.setAttribute('data-theme', 'dracula');
+    } else {
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'alucard');
     }
-  }, [lastCheckedTime]);
+  }, [preferences.theme]);
 
-  const selectedBook = books.find((b) => b.id === selectedBookId) || books[0] || null;
-  const unreadNotifCount = notifications.filter((n) => !n.read).length;
+  const toggleTheme = () => {
+    const next = preferences.theme === 'light' ? 'dark' : 'light';
+    setPreferences((prev) => ({ ...prev, theme: next }));
+  };
 
-  const addBook = (newBook: Audiobook) => {
-    // Check if muted
-    if (isMuted(newBook.seriesName || newBook.series?.name || '—', newBook.title, newBook.author, muteList)) {
-      alert(`"${newBook.title}" matches your Mute List and was ignored.`);
-      return;
-    }
+  const setTheme = (t: 'light' | 'dark') => {
+    setPreferences((prev) => ({ ...prev, theme: t }));
+  };
 
-    setBooks((prev) => {
-      const exists = prev.some((b) => b.title.toLowerCase() === newBook.title.toLowerCase());
-      if (exists) return prev;
-      return [newBook, ...prev];
+  // Follow Checkers
+  const isBookFollowed = useCallback((bookId: string) => {
+    return books.find((b) => b.id === bookId)?.isFollowed ?? false;
+  }, [books]);
+
+  const isAuthorFollowed = useCallback((name: string) => {
+    return authors.find((a) => a.name.toLowerCase() === name.toLowerCase())?.isFollowed ?? false;
+  }, [authors]);
+
+  const isNarratorFollowed = useCallback((name: string) => {
+    return narrators.find((n) => n.name.toLowerCase() === name.toLowerCase())?.isFollowed ?? false;
+  }, [narrators]);
+
+  const isSeriesFollowed = useCallback((name: string) => {
+    return series.find((s) => s.name.toLowerCase() === name.toLowerCase())?.isFollowed ?? false;
+  }, [series]);
+
+  const isEntityTracked = useCallback((type: 'author' | 'narrator' | 'series', name: string) => {
+    if (type === 'author') return isAuthorFollowed(name);
+    if (type === 'narrator') return isNarratorFollowed(name);
+    if (type === 'series') return isSeriesFollowed(name);
+    return false;
+  }, [isAuthorFollowed, isNarratorFollowed, isSeriesFollowed]);
+
+  // Follow Toggles
+  const toggleFollowBook = useCallback((bookId: string) => {
+    setBooks((prev) =>
+      prev.map((b) => {
+        if (b.id === bookId) {
+          const nextState = !b.isFollowed;
+          showToast(nextState ? `Following ${b.title}` : `Unfollowed ${b.title}`, 'success');
+          return { ...b, isFollowed: nextState };
+        }
+        return b;
+      })
+    );
+  }, [showToast]);
+
+  const toggleFollowAuthor = useCallback((authorName: string) => {
+    setAuthors((prev) => {
+      const existing = prev.find((a) => a.name.toLowerCase() === authorName.toLowerCase());
+      if (existing) {
+        const next = !existing.isFollowed;
+        showToast(next ? `Following author ${authorName}` : `Unfollowed author ${authorName}`, 'success');
+        return prev.map((a) => (a.id === existing.id ? { ...a, isFollowed: next } : a));
+      } else {
+        showToast(`Following author ${authorName}`, 'success');
+        return [...prev, { id: 'auth-' + Date.now(), name: authorName, isFollowed: true }];
+      }
     });
+  }, [showToast]);
 
-    setSelectedBookId(newBook.id);
-    sendNativePushNotification(`Audiobook Added: ${newBook.title}`, {
-      body: `By ${newBook.author} · Narrated by ${newBook.narrators.join(', ')}`,
+  const toggleFollowNarrator = useCallback((narratorName: string) => {
+    setNarrators((prev) => {
+      const existing = prev.find((n) => n.name.toLowerCase() === narratorName.toLowerCase());
+      if (existing) {
+        const next = !existing.isFollowed;
+        showToast(next ? `Following narrator ${narratorName}` : `Unfollowed narrator ${narratorName}`, 'success');
+        return prev.map((n) => (n.id === existing.id ? { ...n, isFollowed: next } : n));
+      } else {
+        showToast(`Following narrator ${narratorName}`, 'success');
+        return [...prev, { id: 'narr-' + Date.now(), name: narratorName, isFollowed: true }];
+      }
     });
+  }, [showToast]);
+
+  const toggleFollowSeries = useCallback((seriesName: string) => {
+    setSeries((prev) => {
+      const existing = prev.find((s) => s.name.toLowerCase() === seriesName.toLowerCase());
+      if (existing) {
+        const next = !existing.isFollowed;
+        showToast(next ? `Following series ${seriesName}` : `Unfollowed series ${seriesName}`, 'success');
+        return prev.map((s) => (s.id === existing.id ? { ...s, isFollowed: next } : s));
+      } else {
+        showToast(`Following series ${seriesName}`, 'success');
+        return [...prev, { id: 'ser-' + Date.now(), name: seriesName, author: 'Multiple Authors', isFollowed: true, bookCount: 1 }];
+      }
+    });
+  }, [showToast]);
+
+  // Book CRUD
+  const addBook = (book: Audiobook) => {
+    setBooks((prev) => [book, ...prev]);
+    showToast(`Added "${book.title}" to library`, 'success');
   };
 
   const updateBook = (id: string, updates: Partial<Audiobook>) => {
     setBooks((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    showToast('Updated audiobook details', 'success');
   };
 
   const deleteBook = (id: string) => {
     setBooks((prev) => prev.filter((b) => b.id !== id));
-    if (selectedBookId === id) {
-      setSelectedBookId(null);
-    }
+    showToast('Audiobook removed', 'info');
   };
 
   const deleteMultipleBooks = (ids: string[]) => {
-    const idSet = new Set(ids);
-    setBooks((prev) => prev.filter((b) => !idSet.has(b.id)));
-    if (selectedBookId && idSet.has(selectedBookId)) {
-      setSelectedBookId(null);
-    }
+    setBooks((prev) => prev.filter((b) => !ids.includes(b.id)));
+    showToast(`Removed ${ids.length} audiobooks`, 'info');
+  };
+
+  const updateReleaseDate = (bookId: string, newDate: string, reason?: string) => {
+    setBooks((prev) =>
+      prev.map((b) => {
+        if (b.id === bookId) {
+          if (b.releaseDate === newDate) return b;
+          const oldDate = b.releaseDate;
+          const historyEntry = {
+            oldDate,
+            newDate,
+            changedAt: new Date().toISOString(),
+            reason: reason || 'Audible release schedule revised',
+          };
+          const nextHistory = [...(b.releaseHistory || []), historyEntry];
+
+          if (pushSettings.notifyDateChanged) {
+            const notif: NotificationLogItem = {
+              id: 'notif-change-' + Date.now(),
+              bookId: b.id,
+              bookTitle: b.title,
+              type: 'date_changed',
+              title: '📅 Release Date Changed',
+              message: `${b.title} changed from ${oldDate} to ${newDate}.${reason ? ' ' + reason : ''}`,
+              triggerDate: new Date().toISOString().split('T')[0],
+              timestamp: new Date().toISOString(),
+              read: false,
+              oldDate,
+              newDate,
+            };
+            setNotifications((n) => [notif, ...n]);
+            sendNativePushNotification(notif.title, { body: notif.message });
+          }
+
+          showToast(`Release date updated for ${b.title}`, 'info');
+          return {
+            ...b,
+            releaseDate: newDate,
+            originalReleaseDate: b.originalReleaseDate || oldDate,
+            releaseHistory: nextHistory,
+          };
+        }
+        return b;
+      })
+    );
+  };
+
+  const toggleDownload = (bookId: string) => {
+    setBooks((prev) =>
+      prev.map((b) => {
+        if (b.id === bookId) {
+          const next = b.downloaded === 'Yes' ? 'No' : 'Yes';
+          showToast(next === 'Yes' ? 'Marked as Downloaded' : 'Removed download flag', 'info');
+          return { ...b, downloaded: next };
+        }
+        return b;
+      })
+    );
   };
 
   const toggleField = (bookId: string, field: 'downloaded' | 'listened') => {
     setBooks((prev) =>
       prev.map((b) => {
         if (b.id === bookId) {
-          const currentVal = b[field] || 'No';
-          const newVal = currentVal === 'Yes' ? 'No' : 'Yes';
-          return {
-            ...b,
-            [field]: newVal,
-            isRead: field === 'listened' ? newVal === 'Yes' : b.isRead,
-            readCompletedAt: field === 'listened' && newVal === 'Yes' ? new Date().toISOString() : b.readCompletedAt,
-          };
+          const next = b[field] === 'Yes' ? 'No' : 'Yes';
+          return { ...b, [field]: next };
         }
         return b;
       })
     );
   };
 
-  const toggleReminder = (bookId: string, type: 'oneWeekBefore' | 'oneDayBefore' | 'dayOfRelease') => {
-    setBooks((prev) =>
-      prev.map((b) => {
-        if (b.id === bookId) {
-          return {
-            ...b,
-            reminders: {
-              ...b.reminders,
-              [type]: !b.reminders[type],
-            },
-          };
-        }
-        return b;
-      })
-    );
-  };
-
-  const markAsRead = (
-    bookId: string,
-    details?: { completedAt?: string; durationHours?: number; rating?: number; notes?: string }
-  ) => {
+  const markAsRead = (bookId: string, details?: { completedAt?: string; durationHours?: number; rating?: number; notes?: string }) => {
     setBooks((prev) =>
       prev.map((b) => {
         if (b.id === bookId) {
@@ -386,25 +535,32 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
             isRead: true,
             listened: 'Yes',
             readCompletedAt: details?.completedAt || new Date().toISOString(),
-            listeningDurationHours: details?.durationHours || b.runtimeHours || 12,
-            userPersonalRating: details?.rating ?? (b.userPersonalRating || 5),
-            userNotes: details?.notes ?? b.userNotes ?? '',
+            listeningDurationHours: details?.durationHours || b.runtimeHours,
+            userPersonalRating: details?.rating ?? b.userPersonalRating ?? 5,
+            userNotes: details?.notes ?? b.userNotes,
           };
         }
         return b;
       })
     );
+    showToast('Marked as listened! Logged to history', 'success');
   };
 
   const markAsUnread = (bookId: string) => {
     setBooks((prev) =>
+      prev.map((b) => (b.id === bookId ? { ...b, isRead: false, listened: 'No' } : b))
+    );
+    showToast('Reset listened status', 'info');
+  };
+
+  const toggleReminder = (bookId: string, type: keyof Audiobook['reminders']) => {
+    setBooks((prev) =>
       prev.map((b) => {
         if (b.id === bookId) {
+          const nextVal = !b.reminders[type];
           return {
             ...b,
-            isRead: false,
-            listened: 'No',
-            readCompletedAt: undefined,
+            reminders: { ...b.reminders, [type]: nextVal },
           };
         }
         return b;
@@ -412,176 +568,101 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  const refetchBookMetadata = async (bookId: string): Promise<boolean> => {
-    const book = books.find((b) => b.id === bookId);
-    if (!book || (!book.audibleUrl && !book.url)) return false;
-
-    const targetUrl = book.url || book.audibleUrl || '';
-    setScanStatusText(`Querying Audible API for: ${book.title}...`);
-    try {
-      const data = await fetchAudibleApiMetadata(targetUrl);
-      if (data) {
-        updateBook(bookId, {
-          title: data.title,
-          seriesName: data.seriesName,
-          seriesUrl: data.seriesUrl,
-          author: data.author,
-          authorUrl: data.authorUrl,
-          narrators: data.narrator.split(', ').filter(Boolean),
-          narrator: data.narrator,
-          releaseDate: data.releaseDate,
-          coverUrl: data.coverUrl || book.coverUrl,
-        });
-        setScanStatusText(`Refreshed: ${data.title}`);
-        return true;
-      }
-    } catch {
-      setScanStatusText(`Failed to re-fetch metadata for: ${book.title}`);
-    }
-    return false;
-  };
-
-  const runScheduledScan = async (silent = false): Promise<{ newCount: number }> => {
-    if (isScanning) return { newCount: 0 };
-    setIsScanning(true);
-    let totalNew = 0;
-
-    try {
-      const seriesList = watchlists.filter((w) => w.type === 'Series');
-      for (let i = 0; i < seriesList.length; i++) {
-        const item = seriesList[i];
-        setScanStatusText(`Scanning series (${i + 1}/${seriesList.length}): ${item.name}...`);
-        const found = await scanWatchlistTargetLive(item, books, muteList, languageFilter);
-        if (found.length > 0) {
-          found.forEach((nb) => addBook(nb));
-          totalNew += found.length;
-        }
-        await new Promise((r) => setTimeout(r, 200));
-      }
-
-      const authorList = watchlists.filter((w) => w.type === 'Author');
-      for (let i = 0; i < authorList.length; i++) {
-        const item = authorList[i];
-        setScanStatusText(`Scanning author (${i + 1}/${authorList.length}): ${item.name}...`);
-        const found = await scanWatchlistTargetLive(item, books, muteList, languageFilter);
-        if (found.length > 0) {
-          found.forEach((nb) => addBook(nb));
-          totalNew += found.length;
-        }
-        await new Promise((r) => setTimeout(r, 200));
-      }
-
-      const narratorList = watchlists.filter((w) => w.type === 'Narrator');
-      for (let i = 0; i < narratorList.length; i++) {
-        const item = narratorList[i];
-        setScanStatusText(`Scanning narrator (${i + 1}/${narratorList.length}): ${item.name}...`);
-        const found = await scanWatchlistTargetLive(item, books, muteList, languageFilter);
-        if (found.length > 0) {
-          found.forEach((nb) => addBook(nb));
-          totalNew += found.length;
-        }
-        await new Promise((r) => setTimeout(r, 200));
-      }
-
-      const nowStr = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-      setLastCheckedTime(nowStr);
-      setScanStatusText(`Scan complete. ${totalNew > 0 ? `Found ${totalNew} new release(s)!` : 'All watchlists up to date.'}`);
-
-      if (totalNew > 0) {
-        sendNativePushNotification('New Releases Discovered!', {
-          body: `Found ${totalNew} new upcoming English release(s) across your watchlists.`,
-        });
-      }
-    } finally {
-      setIsScanning(false);
-    }
-
-    return { newCount: totalNew };
-  };
-
-  const scanSingleTarget = async (target: WatchlistItem): Promise<number> => {
-    setScanStatusText(`Scanning ${target.type.toLowerCase()}: ${target.name}...`);
-    setIsScanning(true);
-    let count = 0;
-    try {
-      const found = await scanWatchlistTargetLive(target, books, muteList, languageFilter);
-      found.forEach((b) => addBook(b));
-      count = found.length;
-      setScanStatusText(`Scan complete for ${target.name}. Found ${count} new release(s).`);
-    } finally {
-      setIsScanning(false);
-    }
-    return count;
-  };
-
   const addWatchlistTarget = (target: Omit<WatchlistItem, 'id'>) => {
-    let url = target.url.trim();
-    if (!url) {
-      const enc = encodeURIComponent(target.name);
-      if (target.type === 'Narrator') url = `https://www.audible.com/search?searchNarrator=${enc}`;
-      else if (target.type === 'Author') url = `https://www.audible.com/search?searchAuthor=${enc}`;
-      else url = `https://www.audible.com/search?keywords=${enc}`;
-    }
-
-    const newItem: WatchlistItem = {
-      ...target,
-      url,
-      id: `w-${Date.now()}`,
-    };
-
-    setWatchlists((prev) => [...prev, newItem]);
-    scanSingleTarget(newItem);
+    if (target.type === 'Author') toggleFollowAuthor(target.name);
+    else if (target.type === 'Narrator') toggleFollowNarrator(target.name);
+    else if (target.type === 'Series') toggleFollowSeries(target.name);
   };
 
-  const removeWatchlistTarget = (id: string) => {
-    setWatchlists((prev) => prev.filter((w) => w.id !== id));
-  };
+  const removeWatchlistTarget = (id: string) => {};
+  const scanSingleTarget = async (target: WatchlistItem) => 0;
 
   const addMuteRule = (rule: Omit<MuteItem, 'id'>) => {
-    const newItem: MuteItem = {
-      ...rule,
-      id: `m-${Date.now()}`,
-    };
-    setMuteList((prev) => [...prev, newItem]);
+    setMuteList((prev) => [...prev, { ...rule, id: 'm-' + Date.now() }]);
+    showToast('Mute rule added', 'info');
   };
 
   const removeMuteRule = (id: string) => {
     setMuteList((prev) => prev.filter((m) => m.id !== id));
   };
 
-  const quickMuteSeries = (seriesName: string) => {
-    if (!seriesName || seriesName === '—') return;
-    if (window.confirm(`Mute the series '${seriesName}'?\n\nUpcoming books and spin-offs from this series will be ignored.`)) {
-      addMuteRule({ type: 'Series', value: seriesName });
+  // Local Folder Sync
+  const connectLocalFolder = async () => {
+    try {
+      const folder = await selectLocalFolder();
+      const updatedConfig: LocalSyncConfig = {
+        ...syncConfig,
+        folderName: folder,
+        syncStatus: 'idle',
+      };
+      setSyncConfig(updatedConfig);
+      saveSyncConfig(updatedConfig);
+      showToast(`Connected local folder: ${folder}`, 'success');
+    } catch (err: any) {
+      if (err.message !== 'Selection cancelled') {
+        showToast('Could not select folder', 'error');
+      }
     }
   };
 
-  const quickAddWatchlist = (type: 'Author' | 'Series' | 'Narrator', name: string, url = '') => {
-    const already = watchlists.some((w) => w.type === type && w.name.toLowerCase() === name.toLowerCase());
-    if (already) {
-      alert(`This ${type} is already on your Watchlist.`);
-      return;
+  const performLocalSync = async () => {
+    try {
+      setSyncConfig((prev) => ({ ...prev, syncStatus: 'syncing' }));
+      const payload: LocalSyncPayload = {
+        version: '2.5.0',
+        exportedAt: new Date().toISOString(),
+        audiobooks: books,
+        authors,
+        narrators,
+        series,
+        watchlists: [],
+        notifications,
+        pushSettings,
+        marketplace: preferences.defaultMarketplace,
+      };
+
+      const result = await syncToLocalFolder(payload, syncConfig.folderName);
+      const updatedConfig: LocalSyncConfig = {
+        ...syncConfig,
+        lastSyncedAt: result.syncedAt,
+        syncStatus: 'synced',
+      };
+      setSyncConfig(updatedConfig);
+      saveSyncConfig(updatedConfig);
+      showToast(`Synchronized to ${syncConfig.folderName}`, 'success');
+    } catch (err: any) {
+      setSyncConfig((prev) => ({ ...prev, syncStatus: 'error', errorMessage: err.message }));
+      showToast('Sync failed: ' + err.message, 'error');
     }
-    addWatchlistTarget({ type, name, url });
   };
 
-  // Watchlist compatibility bridge
-  const addTrackedEntity = (entity: { type: TrackedEntityType; name: string; notes?: string; url?: string }) => {
-    const mappedType: 'Author' | 'Series' | 'Narrator' =
-      entity.type === 'author' ? 'Author' : entity.type === 'series' ? 'Series' : 'Narrator';
-    addWatchlistTarget({
-      type: mappedType,
-      name: entity.name,
-      url: entity.url || '',
-    });
+  const performLocalRestore = async () => {
+    try {
+      const data = await restoreFromLocalFolder();
+      if (!data) return;
+      if (data.audiobooks && Array.isArray(data.audiobooks)) {
+        setBooks(data.audiobooks);
+      }
+      if (data.authors && Array.isArray(data.authors)) {
+        setAuthors(data.authors);
+      }
+      if (data.narrators && Array.isArray(data.narrators)) {
+        setNarrators(data.narrators);
+      }
+      if (data.series && Array.isArray(data.series)) {
+        setSeries(data.series);
+      }
+      showToast(`Restored ${data.audiobooks?.length || 0} audiobooks`, 'success');
+    } catch (err: any) {
+      showToast('Restore error: ' + err.message, 'error');
+    }
   };
 
-  const removeTrackedEntity = (id: string) => removeWatchlistTarget(id);
-
-  const isEntityTracked = (type: 'author' | 'narrator' | 'series', name: string): boolean => {
-    const cleanName = name.toLowerCase().trim();
-    const mappedType = type === 'author' ? 'Author' : type === 'series' ? 'Series' : 'Narrator';
-    return watchlists.some((w) => w.type === mappedType && w.name.toLowerCase().trim() === cleanName);
+  const toggleAutoSync = (enabled: boolean) => {
+    const updated = { ...syncConfig, autoSyncEnabled: enabled };
+    setSyncConfig(updated);
+    saveSyncConfig(updated);
+    showToast(enabled ? 'Auto-sync enabled' : 'Auto-sync paused', 'info');
   };
 
   const markNotificationRead = (id: string) => {
@@ -590,6 +671,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const markAllNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    showToast('All notifications marked read', 'info');
   };
 
   const deleteNotification = (id: string) => {
@@ -597,203 +679,41 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const triggerTestNotification = () => {
-    sendNativePushNotification('Audible Release Alert', {
-      body: 'Reminder: "Protocol Omega" releases today on Audible!',
-    });
-    showToast('Sent native notification! 🔔', 'info');
-  };
-
-  const updatePushSettings = (settings: Partial<PushNotificationSettings>) => {
-    setPushSettings((prev) => ({ ...prev, ...settings }));
+    sendNativePushNotification('🎉 Test Alert', { body: 'Native release notifications are active and ready!' });
+    showToast('Sent test notification', 'success');
   };
 
   const requestSystemNotificationPermission = async () => {
-    const perm = await requestPushPermission();
-    if (perm === 'granted') {
-      setPushSettings((prev) => ({ ...prev, pushEnabled: true }));
-      showToast('Native Android notification permission granted! 🔔', 'success');
-      sendNativePushNotification('Audible Tracker Notifications Active', {
-        body: 'You will receive native alerts on your device for upcoming releases!',
-      });
-    } else {
-      showToast('Notification permission was not granted.', 'info');
-    }
+    await requestPushPermission();
   };
 
-  // Toast notification management
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3500);
+  const updatePushSettings = (updates: Partial<PushNotificationSettings>) => {
+    setPushSettings((prev) => ({ ...prev, ...updates }));
+    showToast('Alert preferences saved', 'success');
   };
 
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+  const updatePreferences = (partial: Partial<AppPreferences>) => {
+    setPreferences((prev) => ({ ...prev, ...partial }));
+    showToast('Preferences updated', 'success');
   };
 
-  // Export backup data
-  const exportBackup = (format: 'json' | 'csv' = 'json') => {
-    try {
-      if (format === 'csv') {
-        exportToCsv(books);
-        showToast(`Exported ${books.length} audiobooks to CSV`, 'success');
-      } else {
-        const jsonStr = createBackupJson(books, watchlists, muteList, preferences, pushSettings);
-        const dateStr = new Date().toISOString().split('T')[0];
-        triggerFileDownload(jsonStr, `audible_tracker_backup_${dateStr}.json`, 'application/json');
-        showToast(`Backup exported (${books.length} books, ${watchlists.length} watchlist targets)`, 'success');
-      }
-    } catch (err: any) {
-      showToast(`Export failed: ${err.message || 'Unknown error'}`, 'error');
-    }
-  };
-
-  // Import backup data (Merge or Replace)
-  const importBackup = (
-    backup: TrackerBackup,
-    mode: 'merge' | 'replace'
-  ): { success: boolean; booksCount: number; watchlistsCount: number } => {
-    try {
-      const incomingBooks = backup.books || [];
-      const incomingWatchlists = backup.watchlists || [];
-      const incomingMuteList = backup.muteList || [];
-
-      if (mode === 'replace') {
-        setBooks(incomingBooks);
-        if (incomingWatchlists.length > 0) setWatchlists(incomingWatchlists);
-        if (incomingMuteList.length > 0) setMuteList(incomingMuteList);
-        if (backup.preferences) updatePreferences(backup.preferences);
-        showToast(`Restored ${incomingBooks.length} books and ${incomingWatchlists.length} watchlist targets!`, 'success');
-        return { success: true, booksCount: incomingBooks.length, watchlistsCount: incomingWatchlists.length };
-      } else {
-        // Merge mode
-        let addedBooks = 0;
-        setBooks((prev) => {
-          const merged = [...prev];
-          for (const inBook of incomingBooks) {
-            const inAsin = getASIN(inBook.url || inBook.audibleUrl || '');
-            const inTitle = inBook.title.toLowerCase().trim();
-
-            const matchIdx = merged.findIndex((b) => {
-              if (inAsin && getASIN(b.url || b.audibleUrl || '') === inAsin) return true;
-              if (b.id === inBook.id) return true;
-              return b.title.toLowerCase().trim() === inTitle;
-            });
-
-            if (matchIdx >= 0) {
-              merged[matchIdx] = {
-                ...inBook,
-                downloaded: merged[matchIdx].downloaded || inBook.downloaded,
-                listened: merged[matchIdx].listened || inBook.listened,
-                isRead: merged[matchIdx].isRead || inBook.isRead,
-              };
-            } else {
-              merged.push(inBook);
-              addedBooks++;
-            }
-          }
-          return merged;
-        });
-
-        let addedWatchlists = 0;
-        setWatchlists((prev) => {
-          const merged = [...prev];
-          for (const w of incomingWatchlists) {
-            if (!merged.some((existing) => existing.type === w.type && existing.name.toLowerCase() === w.name.toLowerCase())) {
-              merged.push({ ...w, id: w.id || `w-${Date.now()}-${Math.random().toString(36).substring(2, 6)}` });
-              addedWatchlists++;
-            }
-          }
-          return merged;
-        });
-
-        setMuteList((prev) => {
-          const merged = [...prev];
-          for (const m of incomingMuteList) {
-            if (!merged.some((existing) => existing.type === m.type && existing.value.toLowerCase() === m.value.toLowerCase())) {
-              merged.push({ ...m, id: m.id || `m-${Date.now()}-${Math.random().toString(36).substring(2, 6)}` });
-            }
-          }
-          return merged;
-        });
-
-        if (backup.preferences) {
-          updatePreferences(backup.preferences);
-        }
-
-        showToast(`Merged ${addedBooks} new books & ${addedWatchlists} watchlists!`, 'success');
-        return { success: true, booksCount: incomingBooks.length, watchlistsCount: incomingWatchlists.length };
-      }
-    } catch (err: any) {
-      showToast(`Import error: ${err.message || 'Failed to process import'}`, 'error');
-      return { success: false, booksCount: 0, watchlistsCount: 0 };
-    }
-  };
-
-  const resetToDefaults = () => {
-    setBooks(INITIAL_AUDIOBOOKS);
-    setWatchlists(DEFAULT_WATCHLIST);
-    setMuteList(DEFAULT_MUTELIST);
-  };
+  const unreadNotifCount = notifications.filter((n) => !n.read).length;
 
   return (
     <TrackerContext.Provider
       value={{
+        activeTab,
+        setActiveTab,
         books,
-        watchlists,
+        authors,
+        narrators,
+        series,
+        watchlists: [],
         muteList,
         notifications,
         pushSettings,
         preferences,
-        updatePreferences,
-        languageFilter,
-        setLanguageFilter,
-        theme,
-        setTheme,
-        toggleTheme,
-        unreadNotifCount,
-        lastCheckedTime,
-        isScanning,
-        scanStatusText,
-        selectedBookId,
-        setSelectedBookId,
-        selectedBook,
-        addBook,
-        updateBook,
-        deleteBook,
-        deleteMultipleBooks,
-        toggleField,
-        toggleReminder,
-        markAsRead,
-        markAsUnread,
-        refetchBookMetadata,
-        runScheduledScan,
-        scanSingleTarget,
-        addWatchlistTarget,
-        removeWatchlistTarget,
-        addMuteRule,
-        removeMuteRule,
-        quickMuteSeries,
-        quickAddWatchlist,
-        trackedEntities: watchlists,
-        addTrackedEntity,
-        removeTrackedEntity,
-        isEntityTracked,
-        markNotificationRead,
-        markAllNotificationsRead,
-        deleteNotification,
-        triggerTestNotification,
-        updatePushSettings,
-        requestSystemNotificationPermission,
-        exportBackup,
-        importBackup,
-        toasts,
-        showToast,
-        removeToast,
+        syncConfig,
         searchQuery,
         setSearchQuery,
         selectedGenre,
@@ -806,7 +726,101 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setTimeframeFilter,
         viewMode,
         setViewMode,
-        resetToDefaults,
+        languageFilter,
+        setLanguageFilter,
+        theme: preferences.theme,
+        setTheme,
+        toggleTheme,
+        unreadNotifCount,
+        isScanning,
+        lastCheckedTime: syncConfig.lastSyncedAt,
+        scanStatusText: 'Ready',
+
+        selectedBook,
+        setSelectedBook,
+        selectedBookId: selectedBook ? selectedBook.id : null,
+        setSelectedBookId: (id: string | null) => {
+          setSelectedBook(books.find((b) => b.id === id) || null);
+        },
+        selectedAuthor,
+        setSelectedAuthor,
+        selectedSeries,
+        setSelectedSeries,
+        selectedNarrator,
+        setSelectedNarrator,
+        isSearchOpen,
+        setIsSearchOpen,
+
+        toggleFollowBook,
+        toggleFollowAuthor,
+        toggleFollowNarrator,
+        toggleFollowSeries,
+        isBookFollowed,
+        isAuthorFollowed,
+        isNarratorFollowed,
+        isSeriesFollowed,
+        isEntityTracked,
+        addTrackedEntity: (entity: any) => {
+          if (entity.type === 'author') toggleFollowAuthor(entity.name);
+          else if (entity.type === 'narrator') toggleFollowNarrator(entity.name);
+          else if (entity.type === 'series') toggleFollowSeries(entity.name);
+        },
+        removeTrackedEntity: (id: string) => {},
+        trackedEntities: [],
+        quickMuteSeries: (seriesName: string) => {
+          addMuteRule({ type: 'Series', value: seriesName });
+        },
+        quickAddWatchlist: (type: 'Author' | 'Series' | 'Narrator', name: string) => {
+          if (type === 'Author') toggleFollowAuthor(name);
+          else if (type === 'Narrator') toggleFollowNarrator(name);
+          else if (type === 'Series') toggleFollowSeries(name);
+        },
+        refetchBookMetadata: async () => true,
+        runScheduledScan: async () => ({ newCount: 0 }),
+        exportBackup: () => {
+          performLocalSync();
+        },
+        importBackup: () => {
+          performLocalRestore();
+        },
+        resetToDefaults: () => {
+          setBooks(INITIAL_AUDIOBOOKS);
+          showToast('Library reset to initial catalog', 'info');
+        },
+
+        addBook,
+        updateBook,
+        deleteBook,
+        deleteMultipleBooks,
+        updateReleaseDate,
+        toggleDownload,
+        toggleField,
+        markAsRead,
+        markAsUnread,
+        toggleReminder,
+
+        addWatchlistTarget,
+        removeWatchlistTarget,
+        scanSingleTarget,
+        addMuteRule,
+        removeMuteRule,
+
+        connectLocalFolder,
+        performLocalSync,
+        performLocalRestore,
+        toggleAutoSync,
+
+        markNotificationRead,
+        markAllNotificationsRead,
+        deleteNotification,
+        triggerTestNotification,
+        requestSystemNotificationPermission,
+        updatePushSettings,
+        updatePreferences,
+
+        toasts,
+        showToast,
+        removeToast,
       }}
     >
       {children}

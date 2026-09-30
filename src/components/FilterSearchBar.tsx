@@ -125,7 +125,7 @@ export const FilterSearchBar: React.FC<FilterSearchBarProps> = ({
           <div className="relative shrink-0">
             <select
               value={selectedGenre}
-              onChange={(e) => setSelectedGenre(e.target.value)}
+              onChange={(e) => setSelectedGenre(e.target.value as any)}
               aria-label="Filter by genre"
               className="h-11 appearance-none rounded-xl bg-slate-900 border border-slate-800 pl-3.5 pr-8 text-xs font-semibold text-slate-200 hover:border-slate-700 focus:outline-none focus:border-amber-500 cursor-pointer"
             >

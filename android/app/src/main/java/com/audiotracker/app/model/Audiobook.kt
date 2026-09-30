@@ -3,118 +3,144 @@ package com.audiotracker.app.model
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-enum class Genre(val displayName: String) {
-    SCI_FI("Sci-Fi"),
-    FANTASY("Fantasy"),
-    LITRPG("LitRPG"),
-    THRILLER("Thriller"),
-    MYSTERY("Mystery"),
-    NON_FICTION("Non-Fiction"),
-    HORROR("Horror"),
-    ROMANCE("Romance"),
-    HISTORICAL("Historical")
+enum class Marketplace(val code: String, val displayName: String) {
+    US("US", "Audible.com"),
+    UK("UK", "Audible.co.uk"),
+    CA("CA", "Audible.ca"),
+    AU("AU", "Audible.com.au"),
+    DE("DE", "Audible.de"),
+    FR("FR", "Audible.fr"),
+    JP("JP", "Audible.co.jp"),
+    IN("IN", "Audible.in")
 }
 
-data class SeriesInfo(
-    val name: String,
-    val bookNumber: String? = null
-)
+enum class DateConfidence {
+    CONFIRMED,
+    MONTH_ONLY,
+    TBA
+}
 
-data class AudiobookReminders(
-    val oneWeekBefore: Boolean = true,
-    val oneDayBefore: Boolean = true,
-    val dayOfRelease: Boolean = true
-)
+enum class ReleaseStatus {
+    UPCOMING,
+    RELEASED
+}
 
-data class Audiobook(
-    val id: String,
+enum class FollowType {
+    BOOK,
+    AUTHOR,
+    SERIES
+}
+
+/**
+ * Room Entity: Book
+ */
+data class Book(
+    val id: String, // ASIN
     val title: String,
-    val series: SeriesInfo? = null,
-    val author: String,
-    val narrators: List<String> = emptyList(),
-    val releaseDate: String, // YYYY-MM-DD
-    val coverUrl: String,
-    val runtimeHours: Double? = null,
-    val genre: Genre,
-    val audibleRating: Double = 4.8,
-    val ratingCount: Int = 1200,
-    val synopsis: String,
-    val audibleUrl: String? = null,
-    val isRead: Boolean = false,
-    val downloaded: Boolean = false,
-    val listened: Boolean = false,
-    val readCompletedAt: String? = null,
-    val userPersonalRating: Int? = null,
-    val userNotes: String? = null,
-    val reminders: AudiobookReminders = AudiobookReminders()
-) {
-    val narratorText: String
-        get() = narrators.joinToString(", ")
+    val subtitle: String? = null,
+    val seriesId: String? = null,
+    val seriesPosition: String? = null,
+    val coverUrl: String? = null,
+    val description: String? = null,
+    val durationMinutes: Int? = null,
+    val narrators: List<String> = emptyList(), // Display names only
+    val marketplace: Marketplace = Marketplace.US,
+    val storeUrl: String,
+    val releaseDate: LocalDate? = null,
+    val dateConfidence: DateConfidence = DateConfidence.CONFIRMED,
+    val status: ReleaseStatus = ReleaseStatus.UPCOMING,
+    val firstSeenAt: String,
+    val updatedAt: String
+)
 
-    val daysUntilRelease: Long
-        get() {
-            return try {
-                val target = LocalDate.parse(releaseDate)
-                val current = LocalDate.of(2026, 9, 27)
-                ChronoUnit.DAYS.between(current, target)
-            } catch (e: Exception) {
-                0L
-            }
-        }
-
-    val countdownLabel: String
-        get() {
-            val d = daysUntilRelease
-            return when {
-                d < 0 -> "Released ${-d}d ago"
-                d == 0L -> "Out Today!"
-                d == 1L -> "Releases Tomorrow"
-                d <= 7L -> "In $d days (1 wk)"
-                d <= 30L -> "In $d days"
-                else -> "In ${d / 7} weeks"
-            }
-        }
-}
-
-data class WatchlistItem(
+/**
+ * Room Entity: Author
+ */
+data class Author(
     val id: String,
-    val type: String, // "Author", "Series", "Narrator"
     val name: String,
-    val url: String = ""
+    val imageUrl: String? = null,
+    val bio: String? = null
 )
 
-data class MuteRule(
+/**
+ * Room Entity: Series
+ */
+data class Series(
     val id: String,
-    val type: String,
-    val value: String
+    val name: String,
+    val primaryAuthorName: String? = null,
+    val imageUrl: String? = null
 )
 
-data class ReleaseNotification(
+/**
+ * Room Entity: BookAuthor (Join table)
+ */
+data class BookAuthor(
+    val bookId: String,
+    val authorId: String,
+    val position: Int = 0 // 0 for primary author
+)
+
+/**
+ * Room Entity: Follow (Polymorphic table)
+ */
+data class Follow(
+    val type: FollowType,
+    val targetId: String,
+    val followedAt: String,
+    val reminderOffsets: List<Int>? = null, // e.g. [0, 1]
+    val archived: Boolean = false,
+    val baselineSyncedAt: String,
+    val notifyNewBooks: Boolean = true
+)
+
+/**
+ * Room Entity: DismissedBook
+ */
+data class DismissedBook(
+    val bookId: String,
+    val dismissedAt: String
+)
+
+/**
+ * Room Entity: ReleaseHistory
+ */
+data class ReleaseHistory(
     val id: String,
     val bookId: String,
-    val bookTitle: String,
-    val title: String,
-    val message: String,
-    val timestamp: Long = System.currentTimeMillis(),
-    val read: Boolean = false
+    val oldDate: LocalDate? = null,
+    val newDate: LocalDate? = null,
+    val oldConfidence: DateConfidence? = null,
+    val newConfidence: DateConfidence? = null,
+    val changedAt: String
 )
 
-enum class ViewFilter(val label: String) {
-    ALL("All Releases"),
-    UPCOMING("Upcoming Only"),
-    TODAY("Releasing Today"),
-    DOWNLOADED("Downloaded"),
-    LISTENED("Listened / Read")
-}
+/**
+ * Room Entity: SearchHistory
+ */
+data class SearchHistory(
+    val query: String,
+    val searchedAt: String
+)
 
-enum class SortOption(val label: String, val sublabel: String) {
-    RELEASE_SOONEST("Release: Soonest / Upcoming First", "Default Audible release schedule"),
-    RELEASE_NEWEST("Release: Newest First", "Latest release date to oldest"),
-    RELEASE_OLDEST("Release: Oldest First", "Earliest release date"),
-    TITLE_ASC("Title: A to Z", "Alphabetical ascending"),
-    TITLE_DESC("Title: Z to A", "Alphabetical descending"),
-    AUTHOR_ASC("Author: A to Z", "Grouped by author name"),
-    RATING_DESC("Audible Rating: Highest First", "Top rated books (★)"),
-    DURATION_DESC("Duration: Longest First", "Longest runtime audiobooks"),
-    DURATION_ASC("Duration: Shortest First", "Quick listens & novellas")
+/**
+ * Room Entity: NotificationLog
+ */
+data class NotificationLog(
+    val id: String,
+    val bookId: String,
+    val type: String, // reminder, date_changed, new_book, now_available
+    val scheduledFor: String,
+    val deliveredAt: String? = null
+)
+
+/**
+ * 4 Main Destinations per Spec
+ */
+enum class MainNavTab(val title: String) {
+    UPCOMING("Upcoming"),
+    SEARCH("Search"),
+    FOLLOWING("Following"),
+    SETTINGS("Settings")
 }
